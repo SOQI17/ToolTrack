@@ -43,17 +43,17 @@ export const TabConsumibles: React.FC<TabConsumiblesProps> = ({
               {isAdmin && (
                 <button 
                   onClick={() => handleDeleteConsumable(c.id)} 
-                  className="absolute top-4 right-4 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-md p-1 border border-slate-100"
+                  className="absolute top-4 right-4 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity dm-surface rounded-md p-1 border dm-border"
                 >
                   <Trash2 size={16}/>
                 </button>
               )}
               
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <p className="text-[10px] font-bold dm-text3 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Package size={12}/> {c.category}
                 </p>
-                <h3 className="font-bold text-slate-800 text-sm mb-4 pr-6 leading-tight whitespace-normal">
+                <h3 className="font-bold dm-text text-sm mb-4 pr-6 leading-tight whitespace-normal">
                   {c.name}
                 </h3>
               </div>
@@ -80,7 +80,7 @@ export const TabConsumibles: React.FC<TabConsumiblesProps> = ({
                   
                   return (
                     <>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 mb-1">
+                      <div className="w-full dm-surface2 border dm-border rounded-full h-1.5 mb-1">
                         <div className={`h-1.5 rounded-full ${col}`} style={{ width: `${pct}%` }}/>
                       </div>
                       <div className="flex justify-between">
@@ -109,7 +109,7 @@ export const TabConsumibles: React.FC<TabConsumiblesProps> = ({
                 </div>
                 <button 
                   onClick={() => openDispatchModal(c)} 
-                  className="text-xs font-bold text-blue-700 bg-blue-50/50 border border-blue-100 px-3 py-2 rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
+                  className="text-xs font-bold text-blue-500 hover:text-white bg-blue-500/10 hover:bg-blue-600 border border-blue-500/20 px-3 py-2 rounded-lg transition-colors"
                 >
                   Entregar
                 </button>

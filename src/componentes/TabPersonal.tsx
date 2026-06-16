@@ -42,18 +42,18 @@ export const TabPersonal: React.FC<TabPersonalProps> = ({
                   ev.stopPropagation(); 
                   handleDeleteEngineer(e.id);
                 }} 
-                className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1.5"
+                className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1.5"
               >
                 <Trash2 size={16}/>
               </button>
               
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 font-black text-2xl mb-4 shadow-sm group-hover:scale-105 transition-transform">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500/10 to-blue-600/20 border dm-border flex items-center justify-center dm-text font-black text-2xl mb-4 shadow-sm group-hover:scale-105 transition-transform">
                 {e.name.charAt(0)}
               </div>
               
               <div className="w-full">
-                <p className="font-bold text-slate-900 text-[15px] truncate">{e.name}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 inline-block">
+                <p className="font-bold dm-text text-[15px] truncate">{e.name}</p>
+                <p className="text-[10px] font-bold dm-text3 uppercase tracking-widest mt-1 dm-surface2 px-2 py-0.5 rounded-md border dm-border inline-block">
                   {e.department}
                 </p>
               </div>

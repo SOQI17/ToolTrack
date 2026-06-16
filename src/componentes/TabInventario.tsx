@@ -154,15 +154,15 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
                     </div>
                   </td>
                   <td className="px-4 py-2 align-middle cursor-pointer min-w-[200px]" onClick={() => handleOpenDetails(t)}>
-                    <p className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors text-xs whitespace-normal leading-tight">{t.name}</p>
+                    <p className="font-bold dm-text group-hover:text-blue-500 transition-colors text-xs whitespace-normal leading-tight">{t.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold text-slate-500 font-mono bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 whitespace-nowrap">SN: {t.serial}</span>
+                      <span className="text-[10px] font-bold dm-text3 font-mono dm-surface2 px-1.5 py-0.5 rounded border dm-border whitespace-nowrap">SN: {t.serial}</span>
                     </div>
                   </td>
                   <td className="px-4 py-2 text-center align-middle whitespace-nowrap">
                     <BadgeABC category={t.abcCategory} />
                   </td>
-                  <td className="px-4 py-2 text-center align-middle font-bold text-slate-700 text-xs whitespace-nowrap">
+                  <td className="px-4 py-2 text-center align-middle font-bold dm-text2 text-xs whitespace-nowrap">
                     {t.quantity}
                   </td>
                   <td className="px-4 py-2 align-middle whitespace-nowrap">

@@ -199,31 +199,31 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                     <td className="px-4 py-3 min-w-[180px]">
                       <div className="font-bold dm-text text-xs leading-tight">{t.name}</div>
                       {idx === 0 && (
-                        <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1 whitespace-nowrap">
+                        <div className="text-[10px] dm-text3 mt-1 flex items-center gap-1 whitespace-nowrap">
                           <Building2 size={9}/> {l.project || l.client || l.purpose}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-700 text-xs whitespace-nowrap">
-                      {idx === 0 ? eng : <span className="text-slate-300 text-[10px]">↳</span>}
+                    <td className="px-4 py-3 font-semibold dm-text2 text-xs whitespace-nowrap">
+                      {idx === 0 ? eng : <span className="text-slate-500 text-[10px]">↳</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 font-mono text-xs whitespace-nowrap">
+                    <td className="px-4 py-3 dm-text3 font-mono text-xs whitespace-nowrap">
                       {idx === 0 ? new Date(l.dateOut).toLocaleDateString() : ''}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {idx === 0 ? (
                         l.dateIn ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-slate-500 font-mono text-xs">
+                            <span className="dm-text3 font-mono text-xs">
                               {new Date(l.dateIn).toLocaleDateString()}
                             </span>
                             {l.returnCondition && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded inline-block ${
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded inline-block border ${
                                 l.returnCondition === 'Con daños' 
-                                  ? 'bg-red-50 text-red-600' 
+                                  ? 'bg-red-500/10 text-red-500 border-red-500/20' 
                                   : l.returnCondition === 'Requiere revisión' 
-                                    ? 'bg-amber-50 text-amber-600' 
-                                    : 'bg-emerald-50 text-emerald-600'
+                                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' 
+                                    : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                               }`}>
                                 {l.returnCondition}
                               </span>
@@ -232,7 +232,7 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                         ) : (
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/50 uppercase tracking-wider animate-pulse">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-wider animate-pulse">
                                 En Terreno
                               </span>
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${dc}`}>
@@ -242,15 +242,15 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                             {l.partialReturns && l.partialReturns.length > 0 && (
                               <div className="flex flex-col gap-1">
                                 {l.partialReturns.map((pr, pi) => (
-                                  <div key={pi} className="bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1.5">
-                                    <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider mb-0.5">
+                                  <div key={pi} className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2 py-1.5">
+                                    <p className="text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-0.5">
                                       Devuelto parcial · {new Date(pr.date).toLocaleDateString()}
                                     </p>
-                                    <p className="text-[10px] font-semibold text-emerald-800">
+                                    <p className="text-[10px] font-semibold dm-text">
                                       {pr.tools.map(pt => pt.name).join(', ')}
                                     </p>
                                     {pr.returnNotes && (
-                                      <p className="text-[9px] text-emerald-600 mt-0.5">{pr.returnNotes}</p>
+                                      <p className="text-[9px] text-emerald-500 mt-0.5">{pr.returnNotes}</p>
                                     )}
                                   </div>
                                 ))}
@@ -266,14 +266,14 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                           {!l.dateIn && (
                             <button 
                               onClick={() => handleOpenReturnModal(l)} 
-                              className="text-[10px] font-bold text-slate-700 bg-white border border-slate-300 px-2.5 py-1.5 rounded-md hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm"
+                              className="text-[10px] font-bold dm-text2 dm-surface border dm-border px-2.5 py-1.5 rounded-md hover:bg-blue-500/10 hover:text-blue-500 transition-colors shadow-sm"
                             >
                               Recibir
                             </button>
                           )}
                           <button 
                             onClick={() => generateLoanPDF(l, eng)} 
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2.5 py-1.5 rounded-md hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors shadow-sm"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold dm-text3 dm-surface border dm-border px-2.5 py-1.5 rounded-md hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 transition-colors shadow-sm"
                           >
                             <Printer size={10}/> PDF
                           </button>
