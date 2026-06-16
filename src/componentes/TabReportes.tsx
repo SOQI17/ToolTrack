@@ -22,7 +22,7 @@ export const TabReportes: React.FC<TabReportesProps> = ({
       <div className="flex-shrink-0 flex justify-between items-center mb-6">
         <div>
           <h2 className="text-3xl font-bold dm-text tracking-tight">Reportes</h2>
-          <p className="text-xs dm-text3 mt-1">Análisis operativo de BodegaControl</p>
+          <p className="text-xs dm-text3 mt-1">Análisis operativo de ToolTrack</p>
         </div>
         <button 
           onClick={() => generateReportPDF(tools, loans, engineers)} 

@@ -1,5 +1,5 @@
 {
-  "name": "bodega-desktop",
+  "name": "tooltrack-desktop",
   "private": true,
   "version": "0.0.0",
   "main": "main.js",
@@ -41,8 +41,8 @@
     "vite": "^7.2.4"
   },
   "build": {
-    "appId": "com.orimec.bodega",
-    "productName": "BodegaControl",
+    "appId": "com.orimec.tooltrack",
+    "productName": "ToolTrack",
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"

@@ -783,7 +783,7 @@ function BodegaContent() {
           <div className="bg-gradient-to-br from-blue-600 to-blue-800 w-16 h-16 rounded-2xl flex items-center justify-center text-white mb-5 shadow-lg shadow-blue-600/30 animate-pulse">
             <Wrench size={32} className="animate-spin duration-1000" style={{ animationDuration: '3s' }} />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 tracking-tight">Cargando BodegaControl...</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 tracking-tight">Cargando ToolTrack...</h2>
           <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">Verificando sesión activa...</p>
         </div>
       </div>
