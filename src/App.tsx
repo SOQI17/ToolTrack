@@ -825,6 +825,7 @@ function BodegaContent() {
     } catch (e: any) {
       console.error("Error creating loan request:", e);
       addToast('Error al enviar la solicitud: ' + e.message, 'error');
+      throw e;
     }
   };
 

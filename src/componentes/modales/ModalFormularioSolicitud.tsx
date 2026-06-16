@@ -35,21 +35,27 @@ export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> =
 
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!destination.trim() || !purpose.trim() || !targetDate || durationDays <= 0) {
       alert("Por favor complete los campos obligatorios.");
       return;
     }
     setSubmitting(true);
-    onSubmitSolicitud({
-      targetDate,
-      durationDays,
-      destination: destination.trim(),
-      purpose: purpose.trim(),
-      project: project.trim() || undefined,
-      client: client.trim() || undefined
-    });
+    try {
+      await onSubmitSolicitud({
+        targetDate,
+        durationDays,
+        destination: destination.trim(),
+        purpose: purpose.trim(),
+        project: project.trim() || undefined,
+        client: client.trim() || undefined
+      });
+    } catch (err) {
+      console.error("Error submitting request:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
