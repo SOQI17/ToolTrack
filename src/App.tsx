@@ -444,12 +444,64 @@ function BodegaContent() {
         createdAt: new Date().toISOString()
       });
       if (finalRole === 'ingeniero') {
-        const engineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
-        await setDoc(engineerDocRef, {
-          id: res.user.uid,
-          name: signupName.trim(),
-          department: 'Ingeniería'
-        });
+        const normalizeName = (name: string) => {
+          return name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+        };
+
+        const normalizedSignupName = normalizeName(signupName);
+        const matchedEngineer = engineers.find(eng => normalizeName(eng.name) === normalizedSignupName);
+
+        if (matchedEngineer) {
+          // 1. Crear el nuevo documento de ingeniero con la UID como ID
+          const newEngineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
+          await setDoc(newEngineerDocRef, {
+            id: res.user.uid,
+            name: signupName.trim(),
+            department: matchedEngineer.department || 'Ingeniería'
+          });
+
+          // 2. Eliminar el documento de ingeniero antiguo con ID aleatorio
+          const oldEngineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', matchedEngineer.id);
+          await deleteDoc(oldEngineerDocRef);
+
+          // 3. Modificar todas las referencias de préstamos anteriores para que apunten a la UID
+          const batch = writeBatch(db);
+          
+          const matchedLoans = loans.filter(l => l.engineerId === matchedEngineer!.id);
+          matchedLoans.forEach(l => {
+            const loanDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id);
+            batch.update(loanDocRef, { engineerId: res.user.uid });
+          });
+
+          // 4. Modificar todas las referencias de consumibles anteriores
+          const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === matchedEngineer!.id);
+          matchedConsumables.forEach(cl => {
+            const clDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id);
+            batch.update(clDocRef, { engineerId: res.user.uid });
+          });
+
+          // 5. Modificar todas las referencias de solicitudes anteriores
+          const matchedRequests = loanRequests.filter(r => r.engineerUid === matchedEngineer!.id);
+          matchedRequests.forEach(r => {
+            const reqDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id);
+            batch.update(reqDocRef, { engineerUid: res.user.uid });
+          });
+
+          await batch.commit();
+        } else {
+          // Si no existe coincidencia, creamos el perfil desde cero
+          const engineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
+          await setDoc(engineerDocRef, {
+            id: res.user.uid,
+            name: signupName.trim(),
+            department: 'Ingeniería'
+          });
+        }
       }
       addToast('¡Cuenta creada y sesión iniciada!', 'success');
     } catch (err: any) {
@@ -834,9 +886,25 @@ function BodegaContent() {
   };
 
   const handleCreateEngineer = async () => {
+    if (!newEngineer.name.trim()) return;
+    const normalizeName = (name: string) => {
+      return name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+    const norm = normalizeName(newEngineer.name);
+    const exists = engineers.some(eng => normalizeName(eng.name) === norm);
+    if (exists) {
+      alert("Ya existe un perfil técnico con este nombre.");
+      return;
+    }
     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'engineers'), newEngineer);
     setShowEngineerModal(false);
     setNewEngineer({ name: '', department: '' });
+    addToast('Perfil técnico creado correctamente.', 'success');
   };
 
   const handleDeleteEngineer = async (id: string) => {
