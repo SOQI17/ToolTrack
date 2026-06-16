@@ -176,6 +176,7 @@ function BodegaContent() {
   // Historial de ediciones
   const [editHistory, setEditHistory] = useState<{ [toolId: string]: EditLogEntry[] }>({});
   const shortcutsEnabled = useRef(true);
+  const hasDeduplicated = useRef(false);
 
   // Zoom de la aplicación
   const [appZoom, setAppZoom] = useState<number>(1);
@@ -347,6 +348,78 @@ function BodegaContent() {
     });
     setAlerts(newAlerts);
   }, [tools, loans, consumables]);
+
+  const deduplicateEngineers = async () => {
+    if (appUser?.role !== 'admin' || engineers.length === 0) return;
+    
+    const normalizeName = (name: string) => {
+      return name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+
+    const groups: { [key: string]: Engineer[] } = {};
+    engineers.forEach(eng => {
+      const norm = normalizeName(eng.name);
+      if (!groups[norm]) groups[norm] = [];
+      groups[norm].push(eng);
+    });
+
+    for (const norm in groups) {
+      const engs = groups[norm];
+      if (engs.length > 1) {
+        engs.sort((a, b) => b.id.length - a.id.length);
+        const keep = engs[0];
+        const duplicatesToRemove = engs.slice(1);
+
+        console.log(`Deduplicating "${keep.name}": keeping ID ${keep.id}, removing:`, duplicatesToRemove.map(d => d.id));
+
+        const batch = writeBatch(db);
+        
+        for (const dupe of duplicatesToRemove) {
+          batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', dupe.id));
+
+          // Migrate loans
+          const matchedLoans = loans.filter(l => l.engineerId === dupe.id);
+          matchedLoans.forEach(l => {
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: keep.id });
+          });
+
+          // Migrate consumables
+          const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === dupe.id);
+          matchedConsumables.forEach(cl => {
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { engineerId: keep.id });
+          });
+
+          // Migrate requests
+          const matchedRequests = loanRequests.filter(r => r.engineerUid === dupe.id);
+          matchedRequests.forEach(r => {
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { engineerUid: keep.id });
+          });
+        }
+
+        try {
+          await batch.commit();
+          addToast(`Perfiles duplicados de "${keep.name}" fusionados correctamente.`, 'info');
+        } catch (error) {
+          console.error("Error deduplicating engineers:", error);
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (appUser?.role === 'admin' && engineers.length > 0 && !hasDeduplicated.current) {
+      hasDeduplicated.current = true;
+      const timer = setTimeout(() => {
+        deduplicateEngineers();
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [appUser, engineers]);
 
   // Accesos rápidos de teclado
   useEffect(() => {
