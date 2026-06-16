@@ -814,10 +814,11 @@ function BodegaContent() {
         durationDays: data.durationDays,
         destination: data.destination,
         purpose: data.purpose,
-        project: data.project,
-        client: data.client,
         status: 'pending'
       };
+      if (data.project) reqData.project = data.project;
+      if (data.client) reqData.client = data.client;
+
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'loan_requests'), reqData);
       setSelectedRequestTools([]);
       setShowSolicitudModal(false);
