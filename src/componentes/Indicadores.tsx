@@ -3,9 +3,28 @@ import type { ToolStatus, ABCCategory } from '../tipos';
 
 interface BadgeEstadoProps {
   status: ToolStatus;
+  condition?: string;
 }
 
-export const BadgeEstado: React.FC<BadgeEstadoProps> = ({ status }) => {
+export const BadgeEstado: React.FC<BadgeEstadoProps> = ({ status, condition }) => {
+  const normalizeText = (t?: string) => {
+    if (!t) return '';
+    return t
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+
+  if (normalizeText(condition) === 'fuera de servicio') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-50 text-red-700 ring-1 ring-red-600/20 whitespace-nowrap">
+        Fuera de servicio
+      </span>
+    );
+  }
+
   const config = {
     'available': { color: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20', text: 'Disponible' },
     'in-use': { color: 'bg-blue-50 text-blue-700 ring-1 ring-blue-600/20', text: 'En Uso' },

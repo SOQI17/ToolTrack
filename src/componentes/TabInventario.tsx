@@ -177,7 +177,7 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
                     <td className="px-4 py-2 align-middle text-center whitespace-nowrap">
                       <input 
                         type="checkbox"
-                        disabled={t.status !== 'available'}
+                        disabled={t.status !== 'available' || (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === 'fuera de servicio'}
                         checked={selectedRequestTools.some(st => st.id === t.id)}
                         onChange={() => {
                           if (selectedRequestTools.some(st => st.id === t.id)) {
@@ -211,7 +211,7 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
                     {t.quantity}
                   </td>
                   <td className="px-4 py-2 align-middle whitespace-nowrap">
-                    <BadgeEstado status={t.status} />
+                    <BadgeEstado status={t.status} condition={t.condition} />
                   </td>
                   <td className="px-4 py-2 align-middle text-right pr-6 whitespace-nowrap">
                     {userRole !== 'ingeniero' && (

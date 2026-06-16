@@ -169,6 +169,7 @@ export const ModalEmisionPrestamo: React.FC<ModalEmisionPrestamoProps> = ({
             <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 divide-y divide-slate-100 custom-scrollbar">
               {tools.filter(t => 
                 t.status === 'available' && 
+                (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() !== 'fuera de servicio' &&
                 (t.name.toLowerCase().includes(loanSearchTerm.toLowerCase()) || 
                  t.serial.toLowerCase().includes(loanSearchTerm.toLowerCase()))
               ).map(t => {
