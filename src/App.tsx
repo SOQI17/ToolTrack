@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { 
   Wrench, Users, LogOut, Sun, Moon, Search, ChevronRight, 
-  Eye, EyeOff, Mail, Lock, User as UserIcon 
+  Eye, EyeOff, Mail, Lock, User as UserIcon, Menu
 } from 'lucide-react';
 import { 
   collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, writeBatch,
@@ -121,6 +121,9 @@ function BodegaContent() {
 
   // Usuarios del sistema (para consultar correos en expedientes)
   const [systemUsers, setSystemUsers] = useState<UserItem[]>([]);
+
+  // Control de menú lateral responsive en móviles
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
   const [alerts, setAlerts] = useState<{ message: string, type: 'calibration' | 'loan' | 'stock', id?: string, loanId?: string, consumableId?: string }[]>([]);
   const [alertModal, setAlertModal] = useState<{ message: string, type: 'calibration' | 'loan' | 'stock', id?: string, loanId?: string, consumableId?: string } | null>(null);
@@ -1342,6 +1345,20 @@ function BodegaContent() {
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       `}</style>
 
+      {/* Header para móviles */}
+      <header className="md:hidden flex items-center justify-between p-4 bg-[#0B1528] text-white border-b border-slate-800 shrink-0 z-30 shadow-md">
+        <button 
+          onClick={() => setSidebarOpen(true)} 
+          className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+        <span className="font-bold text-sm tracking-tight">ToolTrack</span>
+        <div className="w-8 h-8 rounded-full bg-[#1a3a6b] flex justify-center items-center text-white text-xs font-bold shrink-0">
+          {currentUser ? currentUser.charAt(0).toUpperCase() : 'U'}
+        </div>
+      </header>
+
       {/* Barra de Navegación Lateral */}
       <BarraLateral 
         activeTab={activeTab}
@@ -1361,6 +1378,8 @@ function BodegaContent() {
             addToast('Error al cerrar sesión.', 'error');
           }
         }}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main className="flex-1 flex flex-col h-full p-6 md:p-8 relative overflow-hidden dm-bg">

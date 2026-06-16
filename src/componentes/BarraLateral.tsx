@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   Wrench, LayoutDashboard, ClipboardList, ArrowRightLeft, 
   Package, Users, Calendar, FileBarChart2, LogOut, Sun, Moon,
-  Inbox, Clock
+  Inbox, Clock, X
 } from 'lucide-react';
 import type { UserRole } from '../tipos';
 
@@ -16,6 +16,8 @@ interface BarraLateralProps {
   currentUser: string;
   userRole: UserRole;
   logout: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const BarraLateral: React.FC<BarraLateralProps> = ({
@@ -27,7 +29,9 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
   setDarkMode,
   currentUser,
   userRole,
-  logout
+  logout,
+  isOpen = false,
+  onClose
 }) => {
   const isAdmin = userRole === 'admin';
   const isBodeguero = userRole === 'bodeguero';
@@ -59,22 +63,37 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
   const dotColor = isAdmin ? 'bg-blue-400' : isBodeguero ? 'bg-amber-400' : 'bg-emerald-400';
 
   return (
-    <aside className="w-full md:w-[260px] h-full bg-[#0B1528] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 z-20 shadow-2xl shadow-slate-900/20">
-      <div className="p-6 flex items-center gap-3 border-b border-slate-800/60 shrink-0">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-2 rounded-xl shadow-inner">
-          <Wrench size={20} className="text-white"/>
-        </div>
-        <div>
-          <span className="font-bold text-white tracking-tight leading-none block">ToolTrack</span>
-          <span className="text-[10px] text-slate-500 font-medium mt-0.5 block">ORIMEC C.A.</span>
-        </div>
-      </div>
-      
-      <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-        {menuItems.map(item => (
+    <>
+      {/* Backdrop de móvil */}
+      {isOpen && (
+        <div 
+          onClick={onClose} 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
+        />
+      )}
+
+      <aside className={`fixed md:relative top-0 bottom-0 left-0 z-50 w-[260px] h-full bg-[#0B1528] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 shadow-2xl shadow-slate-900/20 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-slate-800/60 shrink-0">
+          <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-2 rounded-xl shadow-inner">
+            <Wrench size={20} className="text-white"/>
+          </div>
+          <div>
+            <span className="font-bold text-white tracking-tight leading-none block">ToolTrack</span>
+            <span className="text-[10px] text-slate-500 font-medium mt-0.5 block">ORIMEC C.A.</span>
+          </div>
           <button 
-            key={item.id} 
-            onClick={() => setActiveTab(item.id)} 
+            onClick={onClose} 
+            className="md:hidden ml-auto p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+          {menuItems.map(item => (
+            <button 
+              key={item.id} 
+              onClick={() => { setActiveTab(item.id); onClose?.(); }} 
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-semibold relative overflow-hidden ${
               activeTab === item.id ? 'text-white bg-blue-600/10' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
             }`}
@@ -138,5 +157,6 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
         <p className="text-[9px] text-slate-700 text-center tracking-widest">N · B · Esc</p>
       </div>
     </aside>
+    </>
   );
 };
