@@ -113,19 +113,47 @@ export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> =
               {/* Duración (Días) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Duración (Días) *</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                    <Clock size={15} />
-                  </span>
-                  <input 
-                    type="number"
-                    required
-                    min={1}
-                    max={90}
-                    className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 focus:border-blue-500 bg-slate-50/50 dark:bg-slate-900/10 dark:text-slate-200 text-sm font-medium transition-all"
-                    value={durationDays}
-                    onChange={e => setDurationDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDurationDays(prev => Math.max(1, prev - 1))}
+                    className="w-11 h-11 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-lg font-bold select-none shrink-0 shadow-sm"
+                  >
+                    -
+                  </button>
+                  <div className="relative flex-1">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                      <Clock size={15} />
+                    </span>
+                    <input 
+                      type="number"
+                      required
+                      min={1}
+                      max={90}
+                      className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 focus:border-blue-500 bg-slate-50/50 dark:bg-slate-900/10 dark:text-slate-200 text-sm font-medium transition-all text-center"
+                      value={durationDays}
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) {
+                          setDurationDays(Math.max(1, Math.min(90, val)));
+                        } else {
+                          setDurationDays('' as any);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!durationDays || isNaN(durationDays)) {
+                          setDurationDays(1);
+                        }
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDurationDays(prev => Math.min(90, prev + 1))}
+                    className="w-11 h-11 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-lg font-bold select-none shrink-0 shadow-sm"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             </div>
