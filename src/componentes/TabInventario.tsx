@@ -69,6 +69,20 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
     inventoryPage * ITEMS_PER_PAGE
   );
 
+  const handleItemClick = (t: ToolItem) => {
+    if (userRole === 'ingeniero') {
+      const isSelectable = t.status === 'available' && (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() !== 'fuera de servicio';
+      if (!isSelectable) return;
+      if (selectedRequestTools.some(st => st.id === t.id)) {
+        setSelectedRequestTools(selectedRequestTools.filter(st => st.id !== t.id));
+      } else {
+        setSelectedRequestTools([...selectedRequestTools, t]);
+      }
+    } else {
+      handleOpenDetails(t);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500">
       <div className="flex-shrink-0 space-y-4 mb-4">
@@ -171,76 +185,81 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y dm-divide">
-              {paginatedTools.map(t => (
-                <tr key={t.id} className="hover:bg-slate-50/5 transition-colors group">
-                  {userRole === 'ingeniero' && (
-                    <td className="px-4 py-2 align-middle text-center whitespace-nowrap">
-                      <input 
-                        type="checkbox"
-                        disabled={t.status !== 'available' || (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() === 'fuera de servicio'}
-                        checked={selectedRequestTools.some(st => st.id === t.id)}
-                        onChange={() => {
-                          if (selectedRequestTools.some(st => st.id === t.id)) {
-                            setSelectedRequestTools(selectedRequestTools.filter(st => st.id !== t.id));
-                          } else {
-                            setSelectedRequestTools([...selectedRequestTools, t]);
-                          }
-                        }}
-                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-800"
-                      />
-                    </td>
-                  )}
-                  <td className="px-4 py-2 align-middle whitespace-nowrap">
-                    <div 
-                      className="w-10 h-10 rounded-md border border-slate-200 bg-white flex items-center justify-center mx-auto cursor-pointer shadow-sm overflow-hidden" 
-                      onClick={() => handleOpenDetails(t)}
-                    >
-                      {t.imageUrl ? <img src={t.imageUrl} className="w-full h-full object-cover" alt=""/> : <ImageIcon size={14} className="text-slate-300"/>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 align-middle cursor-pointer min-w-[200px]" onClick={() => handleOpenDetails(t)}>
-                    <p className="font-bold dm-text group-hover:text-blue-500 transition-colors text-xs whitespace-normal leading-tight">{t.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold dm-text3 font-mono dm-surface2 px-1.5 py-0.5 rounded border dm-border whitespace-nowrap">SN: {t.serial}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-center align-middle whitespace-nowrap">
-                    <BadgeABC category={t.abcCategory} />
-                  </td>
-                  <td className="px-4 py-2 text-center align-middle font-bold dm-text2 text-xs whitespace-nowrap">
-                    {t.quantity}
-                  </td>
-                  <td className="px-4 py-2 align-middle whitespace-nowrap">
-                    <BadgeEstado status={t.status} condition={t.condition} />
-                  </td>
-                  <td className="px-4 py-2 align-middle text-right pr-6 whitespace-nowrap">
-                    {userRole !== 'ingeniero' && (
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => { setSelectedTool(t); setShowQRModal(true); }} 
-                          className="p-1.5 text-slate-400 hover:text-slate-800 rounded-md hover:bg-slate-200 transition-colors"
-                        >
-                          <QrCode size={14}/>
-                        </button>
-                        <button 
-                          onClick={() => openEditToolModal(t)} 
-                          className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit size={14}/>
-                        </button>
-                        {userRole === 'admin' && (
-                          <button 
-                            onClick={() => handleDeleteTool(t.id)} 
-                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 size={14}/>
-                          </button>
-                        )}
-                      </div>
+              {paginatedTools.map(t => {
+                const selectable = t.status === 'available' && (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() !== 'fuera de servicio';
+                const canClick = userRole !== 'ingeniero' || selectable;
+
+                return (
+                  <tr key={t.id} className={`hover:bg-slate-50/5 transition-colors group ${!selectable && userRole === 'ingeniero' ? 'opacity-60' : ''}`}>
+                    {userRole === 'ingeniero' && (
+                      <td className="px-4 py-2 align-middle text-center whitespace-nowrap">
+                        <input 
+                          type="checkbox"
+                          disabled={!selectable}
+                          checked={selectedRequestTools.some(st => st.id === t.id)}
+                          onChange={() => {
+                            if (selectedRequestTools.some(st => st.id === t.id)) {
+                              setSelectedRequestTools(selectedRequestTools.filter(st => st.id !== t.id));
+                            } else {
+                              setSelectedRequestTools([...selectedRequestTools, t]);
+                            }
+                          }}
+                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-800"
+                        />
+                      </td>
                     )}
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-4 py-2 align-middle whitespace-nowrap">
+                      <div 
+                        className={`w-10 h-10 rounded-md border border-slate-200 bg-white flex items-center justify-center mx-auto shadow-sm overflow-hidden ${canClick ? 'cursor-pointer' : 'cursor-not-allowed'}`} 
+                        onClick={() => handleItemClick(t)}
+                      >
+                        {t.imageUrl ? <img src={t.imageUrl} className="w-full h-full object-cover" alt=""/> : <ImageIcon size={14} className="text-slate-300"/>}
+                      </div>
+                    </td>
+                    <td className={`px-4 py-2 align-middle min-w-[200px] ${canClick ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={() => handleItemClick(t)}>
+                      <p className="font-bold dm-text group-hover:text-blue-500 transition-colors text-xs whitespace-normal leading-tight">{t.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold dm-text3 font-mono dm-surface2 px-1.5 py-0.5 rounded border dm-border whitespace-nowrap">SN: {t.serial}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-center align-middle whitespace-nowrap">
+                      <BadgeABC category={t.abcCategory} />
+                    </td>
+                    <td className="px-4 py-2 text-center align-middle font-bold dm-text2 text-xs whitespace-nowrap">
+                      {t.quantity}
+                    </td>
+                    <td className="px-4 py-2 align-middle whitespace-nowrap">
+                      <BadgeEstado status={t.status} condition={t.condition} />
+                    </td>
+                    <td className="px-4 py-2 align-middle text-right pr-6 whitespace-nowrap">
+                      {userRole !== 'ingeniero' && (
+                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => { setSelectedTool(t); setShowQRModal(true); }} 
+                            className="p-1.5 text-slate-400 hover:text-slate-800 rounded-md hover:bg-slate-200 transition-colors"
+                          >
+                            <QrCode size={14}/>
+                          </button>
+                          <button 
+                            onClick={() => openEditToolModal(t)} 
+                            className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                          >
+                            <Edit size={14}/>
+                          </button>
+                          {userRole === 'admin' && (
+                            <button 
+                              onClick={() => handleDeleteTool(t.id)} 
+                              className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={14}/>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredTools.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center text-sm font-medium text-slate-400">

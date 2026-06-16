@@ -1343,6 +1343,11 @@ function BodegaContent() {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; } 
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media (max-width: 768px) {
+          input, select, textarea {
+            font-size: 16px !important;
+          }
+        }
       `}</style>
 
       {/* Header para móviles */}
