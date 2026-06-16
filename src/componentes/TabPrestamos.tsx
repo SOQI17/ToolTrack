@@ -90,14 +90,14 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
         </div>
         
         {/* Fila 2: Filtros + Buscador */}
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap max-w-full">
           {/* Tabs estado */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar max-w-full py-0.5">
             {(['ALL', 'active', 'returned'] as const).map(f => (
               <button 
                 key={f} 
                 onClick={() => setLoanFilter(f)} 
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                   loanFilter === f 
                     ? 'bg-blue-600 text-white shadow-sm' 
                     : 'bg-white border border-slate-200 text-slate-500 hover:border-slate-300'
@@ -164,7 +164,7 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
 
       <div className="dm-surface rounded-2xl border dm-border shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="overflow-auto custom-scrollbar flex-1">
-          <table className="w-full text-left text-sm relative table-auto">
+          <table className="w-full text-left text-sm relative table-auto min-w-[700px]">
             <thead className="sticky top-0 z-20 dm-surface2 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.08)]">
               <tr>
                 <th className="px-4 py-3 font-bold dm-text3 text-[10px] uppercase tracking-widest whitespace-nowrap">Activos Involucrados</th>

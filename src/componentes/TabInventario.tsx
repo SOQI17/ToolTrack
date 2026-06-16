@@ -118,14 +118,14 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center dm-surface p-1.5 rounded-2xl border dm-border shadow-sm">
-          <div className="flex bg-slate-100/70 p-1 rounded-xl w-full md:w-auto">
+          <div className="flex bg-slate-100/70 p-1 rounded-xl w-full md:w-auto overflow-x-auto custom-scrollbar max-w-full">
             {(['ALL', 'A', 'B', 'C'] as const).map((type) => {
               const count = type === 'ALL' ? tools.length : tools.filter(t => t.abcCategory === type).length;
               return (
                 <button 
                   key={type} 
                   onClick={() => { setFilterABC(type); setInventoryPage(1); }} 
-                  className={`px-5 py-2 text-xs font-bold rounded-lg transition-all flex-1 md:flex-none flex justify-center items-center gap-2 ${
+                  className={`px-5 py-2 text-xs font-bold rounded-lg transition-all flex-1 md:flex-none flex justify-center items-center gap-2 whitespace-nowrap shrink-0 ${
                     filterABC === type 
                       ? 'bg-white text-blue-700 shadow-sm border border-slate-200/50' 
                       : 'text-slate-500 hover:text-slate-800'
@@ -156,7 +156,7 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
 
       <div className="dm-surface rounded-2xl border shadow-sm flex-1 flex flex-col min-h-0 overflow-hidden dm-border">
         <div className="overflow-auto custom-scrollbar flex-1">
-          <table className="w-full text-left text-sm relative table-auto">
+          <table className="w-full text-left text-sm relative table-auto min-w-[750px]">
             <thead className="sticky top-0 z-20 dm-surface2 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.08)]">
               <tr>
                 {userRole === 'ingeniero' && (
