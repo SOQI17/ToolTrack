@@ -60,7 +60,7 @@ export interface Engineer {
   department: string;
 }
 
-export type UserRole = 'admin' | 'bodeguero';
+export type UserRole = 'admin' | 'bodeguero' | 'ingeniero';
 
 export interface EditLogEntry {
   field: string;
@@ -111,5 +111,23 @@ export interface UserItem {
   email: string;
   role: UserRole;
   createdAt: string;
+}
+
+export interface LoanRequest {
+  id: string;
+  engineerUid: string;
+  engineerName: string;
+  tools: { id: string; name: string; serial: string }[];
+  requestDate: string;
+  targetDate: string;
+  durationDays: number;
+  destination: string;
+  purpose: string;
+  project?: string;
+  client?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  resolvedBy?: string;
+  resolvedAt?: string;
+  rejectionReason?: string;
 }
 

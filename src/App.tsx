@@ -18,7 +18,7 @@ import {
 import { db, auth, appId } from './firebase';
 import type { 
   ToolItem, Loan, Engineer, ConsumableItem, ConsumableLog, 
-  UserRole, EditLogEntry, ToolComponent
+  UserRole, EditLogEntry, ToolComponent, LoanRequest
 } from './tipos';
 
 // Utilidades
@@ -36,6 +36,8 @@ import { TabConsumibles } from './componentes/TabConsumibles';
 import { TabPersonal } from './componentes/TabPersonal';
 import { TabCalibraciones } from './componentes/TabCalibraciones';
 import { TabReportes } from './componentes/TabReportes';
+import { TabSolicitudes } from './componentes/TabSolicitudes';
+import { TabMisSolicitudes } from './componentes/TabMisSolicitudes';
 
 // Modales
 import { ModalDetalleActivo } from './componentes/modales/ModalDetalleActivo';
@@ -50,6 +52,7 @@ import { ModalDespachoConsumible } from './componentes/modales/ModalDespachoCons
 import { ModalDetalleIngeniero } from './componentes/modales/ModalDetalleIngeniero';
 import { ModalFormularioIngeniero } from './componentes/modales/ModalFormularioIngeniero';
 import { ModalImportarCSV } from './componentes/modales/ModalImportarCSV';
+import { ModalFormularioSolicitud } from './componentes/modales/ModalFormularioSolicitud';
 
 // --- ERROR BOUNDARY ---
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
@@ -84,7 +87,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 function BodegaContent() {
   const [user, setUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<string>('');
-  const [appUser, setAppUser] = useState<{ name: string, role: 'admin' | 'bodeguero' } | null>(null);
+  const [appUser, setAppUser] = useState<{ name: string, role: UserRole } | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   
   // Login State
@@ -103,13 +106,19 @@ function BodegaContent() {
   const [authError, setAuthError] = useState<string>('');
   const [authSubmitting, setAuthSubmitting] = useState<boolean>(false);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inventory' | 'loans' | 'engineers' | 'consumables' | 'calendar' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   const [tools, setTools] = useState<ToolItem[]>([]);
   const [engineers, setEngineers] = useState<Engineer[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [consumables, setConsumables] = useState<ConsumableItem[]>([]);
   const [consumableLogs, setConsumableLogs] = useState<ConsumableLog[]>([]);
+  
+  // Solicitudes de Préstamo
+  const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
+  const [selectedRequestTools, setSelectedRequestTools] = useState<ToolItem[]>([]);
+  const [showSolicitudModal, setShowSolicitudModal] = useState<boolean>(false);
+
   const [alerts, setAlerts] = useState<{ message: string, type: 'calibration' | 'loan' | 'stock', id?: string, loanId?: string, consumableId?: string }[]>([]);
   const [alertModal, setAlertModal] = useState<{ message: string, type: 'calibration' | 'loan' | 'stock', id?: string, loanId?: string, consumableId?: string } | null>(null);
 
@@ -236,6 +245,11 @@ function BodegaContent() {
             }
             setCurrentUser(finalName);
             setAppUser({ name: finalName, role: finalRole });
+            if (finalRole === 'ingeniero') {
+              setActiveTab('inventory');
+            } else {
+              setActiveTab('dashboard');
+            }
           } else {
             // Document doesn't exist, create fallback
             const fallbackRole: UserRole = currentUserRes.email === 'alexis.guerra@orimec.com.ec' ? 'admin' : 'bodeguero';
@@ -249,6 +263,11 @@ function BodegaContent() {
             });
             setCurrentUser(fallbackName);
             setAppUser({ name: fallbackName, role: fallbackRole });
+            if (fallbackRole === 'ingeniero') {
+              setActiveTab('inventory');
+            } else {
+              setActiveTab('dashboard');
+            }
           }
           setUser(currentUserRes);
         } catch (err) {
@@ -258,6 +277,11 @@ function BodegaContent() {
           const fallbackName = currentUserRes.email?.split('@')[0] || 'Usuario';
           setCurrentUser(fallbackName);
           setAppUser({ name: fallbackName, role: fallbackRole });
+          if (fallbackRole === 'ingeniero') {
+            setActiveTab('inventory');
+          } else {
+            setActiveTab('dashboard');
+          }
           setUser(currentUserRes);
         }
       } else {
@@ -287,6 +311,9 @@ function BodegaContent() {
     const unsubConsumableLogs = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'consumable_logs'), s => {
       setConsumableLogs(s.docs.map(d => ({ id: d.id, ...d.data() } as ConsumableLog)));
     });
+    const unsubLoanRequests = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'loan_requests'), s => {
+      setLoanRequests(s.docs.map(d => ({ id: d.id, ...d.data() } as LoanRequest)));
+    });
     
     return () => {
       unsubTools();
@@ -294,6 +321,7 @@ function BodegaContent() {
       unsubLoans();
       unsubConsumables();
       unsubConsumableLogs();
+      unsubLoanRequests();
     };
   }, [user]);
 
@@ -415,6 +443,14 @@ function BodegaContent() {
         role: finalRole,
         createdAt: new Date().toISOString()
       });
+      if (finalRole === 'ingeniero') {
+        const engineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
+        await setDoc(engineerDocRef, {
+          id: res.user.uid,
+          name: signupName.trim(),
+          department: 'Ingeniería'
+        });
+      }
       addToast('¡Cuenta creada y sesión iniciada!', 'success');
     } catch (err: any) {
       console.error(err);
@@ -621,6 +657,120 @@ function BodegaContent() {
       ].slice(0, 30));
     } catch (error) {
       alert("Error: " + error);
+    }
+  };
+
+  const handleCreateLoanRequest = async (data: {
+    targetDate: string;
+    durationDays: number;
+    destination: string;
+    purpose: string;
+    project?: string;
+    client?: string;
+  }) => {
+    if (!user || !appUser) return;
+    try {
+      const reqData: Omit<LoanRequest, 'id'> = {
+        engineerUid: user.uid,
+        engineerName: appUser.name,
+        tools: selectedRequestTools.map(t => ({ id: t.id, name: t.name, serial: t.serial })),
+        requestDate: new Date().toISOString(),
+        targetDate: data.targetDate,
+        durationDays: data.durationDays,
+        destination: data.destination,
+        purpose: data.purpose,
+        project: data.project,
+        client: data.client,
+        status: 'pending'
+      };
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'loan_requests'), reqData);
+      setSelectedRequestTools([]);
+      setShowSolicitudModal(false);
+      addToast('Solicitud de préstamo enviada correctamente.', 'success');
+    } catch (e: any) {
+      console.error("Error creating loan request:", e);
+      addToast('Error al enviar la solicitud: ' + e.message, 'error');
+    }
+  };
+
+  const handleApproveRequest = async (req: LoanRequest) => {
+    if (!user || !appUser) return;
+    try {
+      // 1. Create a loan document
+      const loanData = {
+        tools: req.tools,
+        engineerId: req.engineerUid,
+        dateOut: new Date().toISOString(),
+        dateIn: null,
+        purpose: req.purpose,
+        project: req.project || 'General',
+        client: req.client || 'Interno'
+      };
+
+      const loanDocRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'));
+      const requestDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', req.id);
+
+      const batch = writeBatch(db);
+      
+      // Set the loan document
+      batch.set(loanDocRef, loanData);
+
+      // Update tools status to 'in-use'
+      req.tools.forEach(tool => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', tool.id), { status: 'in-use' });
+      });
+
+      // Update the request status
+      batch.update(requestDocRef, {
+        status: 'approved',
+        resolvedBy: appUser.name,
+        resolvedAt: new Date().toISOString()
+      });
+
+      await batch.commit();
+
+      addToast('Solicitud aprobada y préstamo registrado.', 'success');
+
+      setActivityLog(prev => [
+        { 
+          icon: '✅', 
+          text: `Aprobado: ${req.tools.length} activo${req.tools.length !== 1 ? 's' : ''} → ${req.engineerName}`, 
+          time: new Date(), 
+          user: currentUser 
+        }, 
+        ...prev
+      ].slice(0, 30));
+    } catch (error: any) {
+      console.error(error);
+      addToast('Error al aprobar la solicitud: ' + error.message, 'error');
+    }
+  };
+
+  const handleRejectRequest = async (req: LoanRequest, reason: string) => {
+    if (!user || !appUser) return;
+    try {
+      const requestDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', req.id);
+      await updateDoc(requestDocRef, {
+        status: 'rejected',
+        rejectionReason: reason,
+        resolvedBy: appUser.name,
+        resolvedAt: new Date().toISOString()
+      });
+
+      addToast('Solicitud rechazada.', 'info');
+
+      setActivityLog(prev => [
+        { 
+          icon: '❌', 
+          text: `Rechazado: Préstamo de ${req.tools.length} activo${req.tools.length !== 1 ? 's' : ''} → ${req.engineerName}`, 
+          time: new Date(), 
+          user: currentUser 
+        }, 
+        ...prev
+      ].slice(0, 30));
+    } catch (error: any) {
+      console.error(error);
+      addToast('Error al rechazar la solicitud: ' + error.message, 'error');
     }
   };
 
@@ -964,8 +1114,8 @@ function BodegaContent() {
               {signupEmail.trim() !== 'alexis.guerra@orimec.com.ec' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Rol Solicitado</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([['admin', 'Administrador', 'Acceso total'], ['bodeguero', 'Bodeguero', 'Préstamos']] as const).map(([role, label, desc]) => (
+                  <div className="grid grid-cols-3 gap-3">
+                    {([['admin', 'Administrador', 'Acceso total'], ['bodeguero', 'Bodeguero', 'Préstamos'], ['ingeniero', 'Ingeniero', 'Solicitudes']] as const).map(([role, label, desc]) => (
                       <button 
                         key={role} 
                         type="button" 
@@ -1049,10 +1199,11 @@ function BodegaContent() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         alertsCount={alerts.length}
+        pendingRequestsCount={loanRequests.filter(r => r.status === 'pending').length}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         currentUser={currentUser}
-        isAdmin={isAdmin}
+        userRole={appUser?.role || 'bodeguero'}
         logout={async () => {
           try {
             await signOut(auth);
@@ -1108,6 +1259,10 @@ function BodegaContent() {
               setShowQRModal={setShowQRModal}
               openEditToolModal={openEditToolModal}
               handleDeleteTool={handleDeleteTool}
+              userRole={appUser?.role || 'bodeguero'}
+              selectedRequestTools={selectedRequestTools}
+              setSelectedRequestTools={setSelectedRequestTools}
+              openSolicitudModal={() => setShowSolicitudModal(true)}
             />
           )}
 
@@ -1131,6 +1286,23 @@ function BodegaContent() {
               generateLoanPDF={generateLoanPDF}
               exportLoans={exportLoans}
               setShowLoanModal={setShowLoanModal}
+            />
+          )}
+
+          {/* Pestaña: Solicitudes (Admin/Storekeeper) */}
+          {activeTab === 'requests' && (
+            <TabSolicitudes 
+              loanRequests={loanRequests}
+              onApprove={handleApproveRequest}
+              onReject={handleRejectRequest}
+            />
+          )}
+
+          {/* Pestaña: Mis Solicitudes (Engineer) */}
+          {activeTab === 'my_requests' && user && (
+            <TabMisSolicitudes 
+              loanRequests={loanRequests}
+              currentUserUid={user.uid}
             />
           )}
 
@@ -1353,6 +1525,15 @@ function BodegaContent() {
               newEngineer={newEngineer}
               setNewEngineer={setNewEngineer}
               handleCreateEngineer={handleCreateEngineer}
+              appZoom={appZoom}
+            />
+          )}
+
+          {showSolicitudModal && selectedRequestTools.length > 0 && (
+            <ModalFormularioSolicitud 
+              selectedTools={selectedRequestTools}
+              setShowSolicitudModal={setShowSolicitudModal}
+              onSubmitSolicitud={handleCreateLoanRequest}
               appZoom={appZoom}
             />
           )}

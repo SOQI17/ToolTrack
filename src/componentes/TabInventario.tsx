@@ -6,6 +6,8 @@ import {
 import type { ToolItem } from '../tipos';
 import { BadgeABC, BadgeEstado } from './Indicadores';
 
+import type { UserRole } from '../tipos';
+
 interface TabInventarioProps {
   tools: ToolItem[];
   searchTerm: string;
@@ -24,6 +26,11 @@ interface TabInventarioProps {
   setShowQRModal: (show: boolean) => void;
   openEditToolModal: (tool: ToolItem) => void;
   handleDeleteTool: (id: string) => void;
+  
+  userRole: UserRole;
+  selectedRequestTools: ToolItem[];
+  setSelectedRequestTools: React.Dispatch<React.SetStateAction<ToolItem[]>>;
+  openSolicitudModal: () => void;
 }
 
 export const TabInventario: React.FC<TabInventarioProps> = ({
@@ -43,7 +50,12 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
   setSelectedTool,
   setShowQRModal,
   openEditToolModal,
-  handleDeleteTool
+  handleDeleteTool,
+  
+  userRole,
+  selectedRequestTools,
+  setSelectedRequestTools,
+  openSolicitudModal
 }) => {
   const filteredTools = tools.filter(t => 
     (filterABC === 'ALL' || t.abcCategory === filterABC) && 
@@ -65,30 +77,43 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
             <h2 className="text-3xl font-bold dm-text tracking-tight">Inventario Global</h2>
           </div>
           <div className="flex gap-3 w-full md:w-auto">
-            <button 
-              onClick={() => setShowImportModal(true)} 
-              className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
-            >
-              <Import size={14}/> Importar
-            </button>
-            <button 
-              onClick={exportInventory} 
-              className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
-            >
-              <FileSpreadsheet size={14}/> Excel
-            </button>
-            <button 
-              onClick={() => generateInventoryPDF(tools)} 
-              className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
-            >
-              <Printer size={14}/> PDF
-            </button>
-            <button 
-              onClick={openCreateToolModal} 
-              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold shadow-md shadow-blue-600/20"
-            >
-              <Plus size={14}/> Alta de Activo
-            </button>
+            {userRole !== 'ingeniero' && (
+              <>
+                <button 
+                  onClick={() => setShowImportModal(true)} 
+                  className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
+                >
+                  <Import size={14}/> Importar
+                </button>
+                <button 
+                  onClick={exportInventory} 
+                  className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
+                >
+                  <FileSpreadsheet size={14}/> Excel
+                </button>
+                <button 
+                  onClick={() => generateInventoryPDF(tools)} 
+                  className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
+                >
+                  <Printer size={14}/> PDF
+                </button>
+                <button 
+                  onClick={openCreateToolModal} 
+                  className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold shadow-md shadow-blue-600/20"
+                >
+                  <Plus size={14}/> Alta de Activo
+                </button>
+              </>
+            )}
+            {userRole === 'ingeniero' && (
+              <button 
+                onClick={openSolicitudModal}
+                disabled={selectedRequestTools.length === 0}
+                className="flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold shadow-md shadow-blue-600/20 disabled:opacity-50 w-full md:w-auto"
+              >
+                <Plus size={14}/> Solicitar Préstamo ({selectedRequestTools.length})
+              </button>
+            )}
           </div>
         </div>
 
@@ -134,6 +159,9 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
           <table className="w-full text-left text-sm relative table-auto">
             <thead className="sticky top-0 z-20 dm-surface2 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.08)]">
               <tr>
+                {userRole === 'ingeniero' && (
+                  <th className="px-4 py-3 font-bold dm-text3 text-[10px] uppercase tracking-widest w-10 text-center whitespace-nowrap">Sel</th>
+                )}
                 <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase tracking-widest w-16 text-center whitespace-nowrap">Img</th>
                 <th className="px-4 py-3 font-bold dm-text3 text-[10px] uppercase tracking-widest whitespace-nowrap">Detalle del Activo</th>
                 <th className="px-4 py-3 font-bold text-slate-500 text-[10px] uppercase tracking-widest text-center whitespace-nowrap">Clasificación</th>
@@ -145,6 +173,23 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
             <tbody className="divide-y dm-divide">
               {paginatedTools.map(t => (
                 <tr key={t.id} className="hover:bg-slate-50/5 transition-colors group">
+                  {userRole === 'ingeniero' && (
+                    <td className="px-4 py-2 align-middle text-center whitespace-nowrap">
+                      <input 
+                        type="checkbox"
+                        disabled={t.status !== 'available'}
+                        checked={selectedRequestTools.some(st => st.id === t.id)}
+                        onChange={() => {
+                          if (selectedRequestTools.some(st => st.id === t.id)) {
+                            setSelectedRequestTools(selectedRequestTools.filter(st => st.id !== t.id));
+                          } else {
+                            setSelectedRequestTools([...selectedRequestTools, t]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-800"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-2 align-middle whitespace-nowrap">
                     <div 
                       className="w-10 h-10 rounded-md border border-slate-200 bg-white flex items-center justify-center mx-auto cursor-pointer shadow-sm overflow-hidden" 
@@ -169,26 +214,28 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
                     <BadgeEstado status={t.status} />
                   </td>
                   <td className="px-4 py-2 align-middle text-right pr-6 whitespace-nowrap">
-                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => { setSelectedTool(t); setShowQRModal(true); }} 
-                        className="p-1.5 text-slate-400 hover:text-slate-800 rounded-md hover:bg-slate-200 transition-colors"
-                      >
-                        <QrCode size={14}/>
-                      </button>
-                      <button 
-                        onClick={() => openEditToolModal(t)} 
-                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
-                      >
-                        <Edit size={14}/>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteTool(t.id)} 
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={14}/>
-                      </button>
-                    </div>
+                    {userRole !== 'ingeniero' && (
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => { setSelectedTool(t); setShowQRModal(true); }} 
+                          className="p-1.5 text-slate-400 hover:text-slate-800 rounded-md hover:bg-slate-200 transition-colors"
+                        >
+                          <QrCode size={14}/>
+                        </button>
+                        <button 
+                          onClick={() => openEditToolModal(t)} 
+                          className="p-1.5 text-slate-400 hover:text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                        >
+                          <Edit size={14}/>
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTool(t.id)} 
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

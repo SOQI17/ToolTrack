@@ -1,17 +1,20 @@
 import React from 'react';
 import { 
   Wrench, LayoutDashboard, ClipboardList, ArrowRightLeft, 
-  Package, Users, Calendar, FileBarChart2, LogOut, Sun, Moon 
+  Package, Users, Calendar, FileBarChart2, LogOut, Sun, Moon,
+  Inbox, Clock
 } from 'lucide-react';
+import type { UserRole } from '../tipos';
 
 interface BarraLateralProps {
   activeTab: string;
   setActiveTab: (tab: any) => void;
   alertsCount: number;
+  pendingRequestsCount?: number;
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   currentUser: string;
-  isAdmin: boolean;
+  userRole: UserRole;
   logout: () => void;
 }
 
@@ -19,21 +22,41 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
   activeTab,
   setActiveTab,
   alertsCount,
+  pendingRequestsCount = 0,
   darkMode,
   setDarkMode,
   currentUser,
-  isAdmin,
+  userRole,
   logout
 }) => {
-  const menuItems = [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Panel Operativo' },
-    { id: 'inventory', icon: ClipboardList, label: 'Activos Fijos' },
-    { id: 'loans', icon: ArrowRightLeft, label: 'Préstamos' },
-    { id: 'consumables', icon: Package, label: 'Consumibles' },
-    { id: 'engineers', icon: Users, label: 'Personal Técnico' },
-    { id: 'calendar', icon: Calendar, label: 'Calibraciones' },
-    { id: 'reports', icon: FileBarChart2, label: 'Reportes' }
-  ];
+  const isAdmin = userRole === 'admin';
+  const isBodeguero = userRole === 'bodeguero';
+  const isIngeniero = userRole === 'ingeniero';
+
+  const menuItems = isIngeniero
+    ? [
+        { id: 'inventory', icon: ClipboardList, label: 'Activos Fijos' },
+        { id: 'my_requests', icon: Clock, label: 'Mis Solicitudes' }
+      ]
+    : [
+        { id: 'dashboard', icon: LayoutDashboard, label: 'Panel Operativo' },
+        { id: 'inventory', icon: ClipboardList, label: 'Activos Fijos' },
+        { id: 'loans', icon: ArrowRightLeft, label: 'Préstamos' },
+        { id: 'requests', icon: Inbox, label: 'Solicitudes' },
+        { id: 'consumables', icon: Package, label: 'Consumibles' },
+        { id: 'engineers', icon: Users, label: 'Personal Técnico' },
+        { id: 'calendar', icon: Calendar, label: 'Calibraciones' },
+        { id: 'reports', icon: FileBarChart2, label: 'Reportes' }
+      ];
+
+  const roleLabel = isAdmin ? 'Administrador' : isBodeguero ? 'Bodeguero' : 'Ingeniero';
+  const roleColor = isAdmin 
+    ? 'text-blue-400' 
+    : isBodeguero 
+      ? 'text-amber-400' 
+      : 'text-emerald-400';
+
+  const dotColor = isAdmin ? 'bg-blue-400' : isBodeguero ? 'bg-amber-400' : 'bg-emerald-400';
 
   return (
     <aside className="w-full md:w-[260px] h-full bg-[#0B1528] text-slate-300 flex flex-col shrink-0 border-r border-slate-800 z-20 shadow-2xl shadow-slate-900/20">
@@ -66,6 +89,11 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
                 {alertsCount}
               </span>
             )}
+            {item.id === 'requests' && pendingRequestsCount > 0 && (
+              <span className="ml-auto bg-blue-500/20 text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/20 animate-pulse">
+                {pendingRequestsCount}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -93,9 +121,9 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-slate-200 truncate leading-tight">{currentUser}</p>
             <div className="flex items-center gap-1 mt-0.5">
-              <div className={`w-1.5 h-1.5 rounded-full ${isAdmin ? 'bg-blue-400' : 'bg-slate-600'}`}/>
-              <p className={`text-[9px] uppercase tracking-wider font-semibold ${isAdmin ? 'text-blue-400' : 'text-slate-600'}`}>
-                {isAdmin ? 'Administrador' : 'Bodeguero'}
+              <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`}/>
+              <p className={`text-[9px] uppercase tracking-wider font-semibold ${roleColor}`}>
+                {roleLabel}
               </p>
             </div>
           </div>
