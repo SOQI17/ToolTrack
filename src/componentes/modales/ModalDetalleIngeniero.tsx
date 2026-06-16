@@ -10,6 +10,8 @@ interface ModalDetalleIngenieroProps {
   getEngineerLoans: (id: string) => Loan[];
   getEngineerConsumables: (id: string) => ConsumableLog[];
   appZoom: number;
+  email?: string;
+  createdAt?: string;
 }
 
 export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
@@ -19,7 +21,9 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
   setEngineerModalTab,
   getEngineerLoans,
   getEngineerConsumables,
-  appZoom
+  appZoom,
+  email,
+  createdAt
 }) => {
   return (
     <div 
@@ -42,9 +46,27 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
               <h2 className="text-3xl font-black tracking-tight mb-2 leading-none">
                 {selectedEngineer.name}
               </h2>
-              <p className="text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-lg w-max text-xs border border-white/5">
-                {selectedEngineer.department}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-lg text-xs border border-white/5">
+                  {selectedEngineer.department}
+                </span>
+                {email ? (
+                  <>
+                    <span className="text-blue-300 font-semibold bg-blue-500/10 px-3 py-1 rounded-lg text-xs border border-blue-500/10">
+                      {email}
+                    </span>
+                    {createdAt && (
+                      <span className="text-slate-400 font-medium text-[11px] font-mono ml-1">
+                        Registrado: {new Date(createdAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-slate-400 font-semibold bg-white/5 px-3 py-1 rounded-lg text-xs border border-white/5">
+                    Sin cuenta de acceso
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <button 

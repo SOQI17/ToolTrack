@@ -18,7 +18,7 @@ import {
 import { db, auth, appId } from './firebase';
 import type { 
   ToolItem, Loan, Engineer, ConsumableItem, ConsumableLog, 
-  UserRole, EditLogEntry, ToolComponent, LoanRequest
+  UserRole, EditLogEntry, ToolComponent, LoanRequest, UserItem
 } from './tipos';
 
 // Utilidades
@@ -118,6 +118,9 @@ function BodegaContent() {
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
   const [selectedRequestTools, setSelectedRequestTools] = useState<ToolItem[]>([]);
   const [showSolicitudModal, setShowSolicitudModal] = useState<boolean>(false);
+
+  // Usuarios del sistema (para consultar correos en expedientes)
+  const [systemUsers, setSystemUsers] = useState<UserItem[]>([]);
 
   const [alerts, setAlerts] = useState<{ message: string, type: 'calibration' | 'loan' | 'stock', id?: string, loanId?: string, consumableId?: string }[]>([]);
   const [alertModal, setAlertModal] = useState<{ message: string, type: 'calibration' | 'loan' | 'stock', id?: string, loanId?: string, consumableId?: string } | null>(null);
@@ -315,6 +318,9 @@ function BodegaContent() {
     const unsubLoanRequests = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'loan_requests'), s => {
       setLoanRequests(s.docs.map(d => ({ id: d.id, ...d.data() } as LoanRequest)));
     });
+    const unsubUsers = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'users'), s => {
+      setSystemUsers(s.docs.map(d => ({ uid: d.id, ...d.data() } as UserItem)));
+    });
     
     return () => {
       unsubTools();
@@ -323,6 +329,7 @@ function BodegaContent() {
       unsubConsumables();
       unsubConsumableLogs();
       unsubLoanRequests();
+      unsubUsers();
     };
   }, [user]);
 
@@ -1657,6 +1664,8 @@ function BodegaContent() {
               getEngineerLoans={getEngineerLoans}
               getEngineerConsumables={getEngineerConsumables}
               appZoom={appZoom}
+              email={systemUsers.find(u => u.uid === selectedEngineer.id)?.email}
+              createdAt={systemUsers.find(u => u.uid === selectedEngineer.id)?.createdAt}
             />
           )}
 
