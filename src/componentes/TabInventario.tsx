@@ -228,12 +228,14 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
                         >
                           <Edit size={14}/>
                         </button>
-                        <button 
-                          onClick={() => handleDeleteTool(t.id)} 
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={14}/>
-                        </button>
+                        {userRole === 'admin' && (
+                          <button 
+                            onClick={() => handleDeleteTool(t.id)} 
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={14}/>
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>
