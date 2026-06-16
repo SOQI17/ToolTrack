@@ -1029,7 +1029,7 @@ function BodegaContent() {
           .no-print { display: none !important; } 
         }
         :root { --dm-bg: #f8fafc; --dm-surface: #ffffff; --dm-surface2: #f8fafc; --dm-border: #e2e8f0; --dm-text: #0f172a; --dm-text2: #475569; --dm-text3: #94a3b8; --dm-sidebar: #0B1528; }
-        [data-theme="dark"] { --dm-bg: #0f1117; --dm-surface: #1a1f2e; --dm-surface2: #141824; --dm-border: #2d3548; --dm-text: #f1f5f9; --dm-text2: #94a3b8; --dm-text3: #4b5563; --dm-sidebar: #090d18; }
+        [data-theme="dark"] { --dm-bg: #0b0f19; --dm-surface: #161f30; --dm-surface2: #0f172a; --dm-border: #24334f; --dm-text: #f8fafc; --dm-text2: #cbd5e1; --dm-text3: #94a3b8; --dm-sidebar: #090d18; }
         .dm-bg { background: var(--dm-bg) !important; }
         .dm-surface { background: var(--dm-surface) !important; border-color: var(--dm-border) !important; }
         .dm-surface2 { background: var(--dm-surface2) !important; }

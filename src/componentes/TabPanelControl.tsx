@@ -177,29 +177,29 @@ export const TabPanelControl: React.FC<TabPanelControlProps> = ({
 
       {alerts.length > 0 && (
         <div className="bg-red-500/10 border border-red-400/20 p-5 rounded-2xl shadow-sm">
-          <h3 className="text-xs font-bold text-red-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest mb-4 flex items-center gap-2">
             <Bell size={16} className="animate-pulse"/> Requieren Atención ({alerts.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {alerts.map((a, i) => {
-              const tl = a.type === 'calibration' ? 'Calibración' : a.type === 'loan' ? 'Préstamo' : 'Stock';
-              const tc = a.type === 'calibration' ? 'bg-amber-50 text-amber-700 border-amber-200' : a.type === 'loan' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-red-50 text-red-700 border-red-200';
-              return (
+               const tl = a.type === 'calibration' ? 'Calibración' : a.type === 'loan' ? 'Préstamo' : 'Stock';
+               const tc = a.type === 'calibration' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : a.type === 'loan' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20';
+               return (
                 <button 
-                  key={i} 
-                  onClick={() => setAlertModal(a)} 
-                  className="flex items-start gap-2.5 dm-surface px-4 py-3 rounded-xl border dm-border shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] text-left w-full hover:shadow-md hover:bg-red-500/5 transition-all group cursor-pointer"
+                   key={i} 
+                   onClick={() => setAlertModal(a)} 
+                   className="flex items-start gap-2.5 dm-surface px-4 py-3 rounded-xl border dm-border shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] text-left w-full hover:shadow-md hover:bg-red-500/5 transition-all group cursor-pointer"
                 >
-                  <AlertOctagon size={16} className="text-red-500 mt-0.5 shrink-0 group-hover:scale-110 transition-transform"/>
+                   <AlertOctagon size={16} className="text-red-500 mt-0.5 shrink-0 group-hover:scale-110 transition-transform"/>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-700 font-medium leading-snug">{a.message}</p>
+                    <p className="text-xs dm-text font-medium leading-snug">{a.message}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tc}`}>{tl}</span>
                       <span className="text-[9px] text-slate-400 group-hover:text-blue-500 transition-colors">Ver detalle →</span>
                     </div>
                   </div>
                 </button>
-              );
+               );
             })}
           </div>
         </div>
@@ -226,7 +226,7 @@ export const TabPanelControl: React.FC<TabPanelControlProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="dm-surface p-6 rounded-2xl border dm-border shadow-sm min-h-[340px]">
-          <h3 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider">Estado Operativo</h3>
+          <h3 className="text-sm font-bold dm-text mb-6 uppercase tracking-wider">Estado Operativo</h3>
           {tools.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <PieChart>
@@ -247,13 +247,15 @@ export const TabPanelControl: React.FC<TabPanelControlProps> = ({
                 <RechartsTooltip 
                   contentStyle={{
                     borderRadius:'12px', 
-                    border:'1px solid #e2e8f0', 
+                    border:'1px solid var(--dm-border)', 
+                    backgroundColor: 'var(--dm-surface)',
+                    color: 'var(--dm-text)',
                     boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.1)', 
                     fontSize:'12px', 
                     fontWeight:'500'
                   }} 
                 />
-                <Legend iconType="circle" wrapperStyle={{ fontSize:'12px', fontWeight:'600', paddingTop:'20px', color:'#475569' }}/>
+                <Legend iconType="circle" wrapperStyle={{ fontSize:'12px', fontWeight:'600', paddingTop:'20px', color:'var(--dm-text2)' }}/>
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -262,18 +264,20 @@ export const TabPanelControl: React.FC<TabPanelControlProps> = ({
         </div>
         
         <div className="dm-surface p-6 rounded-2xl border dm-border shadow-sm min-h-[340px]">
-          <h3 className="text-sm font-bold text-slate-800 mb-6 uppercase tracking-wider">Clasificación Activos</h3>
+          <h3 className="text-sm font-bold dm-text mb-6 uppercase tracking-wider">Clasificación Activos</h3>
           {tools.length > 0 ? (
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={categoryData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }} axisLine={false} tickLine={false} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--dm-border)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--dm-text3)', fontWeight: 500 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--dm-text3)', fontWeight: 500 }} axisLine={false} tickLine={false} />
                 <RechartsTooltip 
-                  cursor={{ fill: '#f8fafc' }} 
+                  cursor={{ fill: 'var(--dm-surface2)' }} 
                   contentStyle={{
                     borderRadius:'12px', 
-                    border:'1px solid #e2e8f0', 
+                    border:'1px solid var(--dm-border)', 
+                    backgroundColor: 'var(--dm-surface)',
+                    color: 'var(--dm-text)',
                     fontSize:'12px', 
                     fontWeight:'500', 
                     boxShadow:'0 10px 15px -3px rgb(0 0 0 / 0.1)'
