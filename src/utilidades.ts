@@ -294,3 +294,37 @@ export const generateLoanPDF = (loan: Loan, engineerName: string) => {
 export const generateQRUrl = (tool: ToolItem) => {
   return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ORIMEC\n${tool.name}\nS/N: ${tool.serial}\nID: ${tool.orimec || 'N/A'}\nEstado: ${tool.status}`)}&margin=10`;
 };
+
+export const getNextInternalTag = (tools: ToolItem[]): string => {
+  if (!tools || tools.length === 0) return 'OPT-001';
+
+  let maxNum = -1;
+  let selectedPrefix = 'OPT-';
+  let paddingLength = 3;
+
+  tools.forEach(t => {
+    const tag = (t.orimec || '').trim();
+    if (!tag) return;
+
+    // Match uppercase prefix followed by hyphen and digits, e.g. OPT-001, ORI-123, or just digits 001
+    const match = tag.match(/^([A-Z]+-)?(\d+)$/i);
+    if (match) {
+      const prefix = match[1] || ''; // e.g. "OPT-" or ""
+      const digitsStr = match[2];     // e.g. "001"
+      const num = parseInt(digitsStr, 10);
+      if (num > maxNum) {
+        maxNum = num;
+        selectedPrefix = prefix;
+        paddingLength = digitsStr.length;
+      }
+    }
+  });
+
+  if (maxNum === -1) {
+    return 'OPT-001';
+  }
+
+  const nextNum = maxNum + 1;
+  const nextNumStr = String(nextNum).padStart(paddingLength, '0');
+  return `${selectedPrefix}${nextNumStr}`;
+};

@@ -11,7 +11,8 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged 
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 
 // Configuración y Tipos
@@ -24,7 +25,7 @@ import type {
 // Utilidades
 import { 
   fileToBase64, exportToCSV, generateInventoryPDF, 
-  generateReportPDF, generateLoanPDF, generateQRUrl 
+  generateReportPDF, generateLoanPDF, generateQRUrl, getNextInternalTag 
 } from './utilidades';
 
 // Componentes
@@ -101,6 +102,10 @@ function BodegaContent() {
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
   const [signupRole, setSignupRole] = useState<UserRole>('bodeguero');
+  
+  // Password Recovery State
+  const [isRecovering, setIsRecovering] = useState<boolean>(false);
+  const [recoveryEmail, setRecoveryEmail] = useState<string>('');
   
   // Auth status
   const [authError, setAuthError] = useState<string>('');
@@ -494,6 +499,34 @@ function BodegaContent() {
         errorMsg = 'El formato del correo electrónico no es válido.';
       } else if (err.code === 'auth/too-many-requests') {
         errorMsg = 'Demasiados intentos fallidos. Intente más tarde.';
+      }
+      setAuthError(errorMsg);
+      addToast(errorMsg, 'error');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handlePasswordRecovery = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!recoveryEmail.trim()) {
+      setAuthError('Por favor introduce tu correo electrónico.');
+      return;
+    }
+    setAuthError('');
+    setAuthSubmitting(true);
+    try {
+      await sendPasswordResetEmail(auth, recoveryEmail.trim());
+      addToast('Enlace de recuperación enviado. Revisa tu correo.', 'success');
+      setIsRecovering(false);
+      setRecoveryEmail('');
+    } catch (err: any) {
+      console.error(err);
+      let errorMsg = 'Error al enviar el correo de recuperación.';
+      if (err.code === 'auth/user-not-found') {
+        errorMsg = 'No existe ningún usuario con este correo electrónico.';
+      } else if (err.code === 'auth/invalid-email') {
+        errorMsg = 'El formato del correo electrónico no es válido.';
       }
       setAuthError(errorMsg);
       addToast(errorMsg, 'error');
@@ -1030,8 +1063,9 @@ function BodegaContent() {
 
   const openCreateToolModal = () => {
     setIsEditingTool(false);
+    const nextTag = getNextInternalTag(tools);
     setNewTool({ 
-      name: '', category: 'Eléctricas', serial: '', orimec: '', status: 'available', 
+      name: '', category: 'Eléctricas', serial: '', orimec: nextTag, status: 'available', 
       condition: 'Buena', abcCategory: 'B', quantity: 1, lastCalibration: '', 
       nextCalibration: '', imageUrl: '', files: [], maintenanceHistory: [] 
     });
@@ -1119,18 +1153,18 @@ function BodegaContent() {
           <div className="flex p-1 bg-slate-100 rounded-xl mb-6">
             <button
               type="button"
-              onClick={() => { setIsRegistering(false); setAuthError(''); }}
+              onClick={() => { setIsRegistering(false); setIsRecovering(false); setAuthError(''); }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                !isRegistering ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                !isRegistering && !isRecovering ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Iniciar Sesión
             </button>
             <button
               type="button"
-              onClick={() => { setIsRegistering(true); setAuthError(''); }}
+              onClick={() => { setIsRegistering(true); setIsRecovering(false); setAuthError(''); }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                isRegistering ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                isRegistering && !isRecovering ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Registrar Cuenta
@@ -1143,7 +1177,52 @@ function BodegaContent() {
             </div>
           )}
 
-          {!isRegistering ? (
+          {isRecovering ? (
+            /* FORMULARIO RECUPERAR CONTRASEÑA */
+            <form onSubmit={handlePasswordRecovery} className="space-y-4">
+              <div className="text-center mb-2">
+                <h3 className="text-sm font-bold text-slate-800">Recuperar Acceso</h3>
+                <p className="text-xs text-slate-400 mt-1">Introduce tu correo para recibir un enlace de restablecimiento.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Correo Electrónico</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <Mail size={16} />
+                  </span>
+                  <input 
+                    type="email"
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 focus:border-blue-500 transition-all outline-none bg-slate-50/50 text-sm font-medium" 
+                    placeholder="correo@orimec.com.ec" 
+                    value={recoveryEmail} 
+                    onChange={e => setRecoveryEmail(e.target.value)} 
+                    disabled={authSubmitting}
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={authSubmitting || !recoveryEmail.trim()} 
+                className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 transition-all disabled:opacity-50 disabled:shadow-none mt-4 flex justify-center items-center gap-2"
+              >
+                {authSubmitting ? (
+                  <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : 'Enviar Enlace'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setIsRecovering(false); setAuthError(''); }}
+                className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors mt-2 block"
+              >
+                Volver a Iniciar Sesión
+              </button>
+            </form>
+          ) : !isRegistering ? (
             /* FORMULARIO LOGIN */
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div>
@@ -1190,10 +1269,20 @@ function BodegaContent() {
                 </div>
               </div>
 
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setIsRecovering(true); setAuthError(''); }}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+
               <button 
                 type="submit" 
                 disabled={authSubmitting || !loginEmail.trim() || !loginPassword} 
-                className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 transition-all disabled:opacity-50 disabled:shadow-none mt-4 flex justify-center items-center gap-2"
+                className="w-full bg-blue-600 text-white py-3.5 rounded-xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 transition-all disabled:opacity-50 disabled:shadow-none mt-2 flex justify-center items-center gap-2"
               >
                 {authSubmitting ? (
                   <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
