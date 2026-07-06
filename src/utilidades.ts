@@ -296,35 +296,28 @@ export const generateQRUrl = (tool: ToolItem) => {
 };
 
 export const getNextInternalTag = (tools: ToolItem[]): string => {
-  if (!tools || tools.length === 0) return 'OPT-001';
+  let maxNum = 0;
+  let paddingLength = 4; // Default to 4 digits (e.g. ORI-0001)
 
-  let maxNum = -1;
-  let selectedPrefix = 'OPT-';
-  let paddingLength = 3;
+  if (tools && tools.length > 0) {
+    tools.forEach(t => {
+      const tag = (t.orimec || '').trim();
+      if (!tag) return;
 
-  tools.forEach(t => {
-    const tag = (t.orimec || '').trim();
-    if (!tag) return;
-
-    // Match uppercase prefix followed by hyphen and digits, e.g. OPT-001, ORI-123, or just digits 001
-    const match = tag.match(/^([A-Z]+-)?(\d+)$/i);
-    if (match) {
-      const prefix = match[1] || ''; // e.g. "OPT-" or ""
-      const digitsStr = match[2];     // e.g. "001"
-      const num = parseInt(digitsStr, 10);
-      if (num > maxNum) {
-        maxNum = num;
-        selectedPrefix = prefix;
-        paddingLength = digitsStr.length;
+      // Match ORI- followed by digits (case-insensitive)
+      const match = tag.match(/^ORI-(\d+)$/i);
+      if (match) {
+        const digitsStr = match[1];
+        const num = parseInt(digitsStr, 10);
+        if (num > maxNum) {
+          maxNum = num;
+          paddingLength = digitsStr.length;
+        }
       }
-    }
-  });
-
-  if (maxNum === -1) {
-    return 'OPT-001';
+    });
   }
 
   const nextNum = maxNum + 1;
   const nextNumStr = String(nextNum).padStart(paddingLength, '0');
-  return `${selectedPrefix}${nextNumStr}`;
+  return `ORI-${nextNumStr}`;
 };
