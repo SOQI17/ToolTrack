@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Calendar, Image as ImageIcon, Upload, CheckCircle } from 'lucide-react';
 import type { ToolItem, ABCCategory } from '../../tipos';
 
@@ -13,6 +13,7 @@ interface ModalFormularioActivoProps {
   selectedToolImage: File | null;
   setSelectedToolImage: (file: File | null) => void;
   appZoom: number;
+  addToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ModalFormularioActivo: React.FC<ModalFormularioActivoProps> = ({
@@ -25,8 +26,24 @@ export const ModalFormularioActivo: React.FC<ModalFormularioActivoProps> = ({
   handleToolImageSelect,
   selectedToolImage,
   setSelectedToolImage,
-  appZoom
+  appZoom,
+  addToast
 }) => {
+  const [triedSubmit, setTriedSubmit] = useState<boolean>(false);
+
+  const isNameInvalid = triedSubmit && !newTool.name?.trim();
+  const isSerialInvalid = triedSubmit && !newTool.serial?.trim();
+
+  const handleSaveClick = () => {
+    setTriedSubmit(true);
+    if (!newTool.name?.trim() || !newTool.serial?.trim()) {
+      if (addToast) {
+        addToast('Por favor completa todos los campos obligatorios marcados en rojo.', 'error');
+      }
+      return;
+    }
+    handleSaveTool();
+  };
   return (
     <div 
       className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in" 
@@ -55,11 +72,18 @@ export const ModalFormularioActivo: React.FC<ModalFormularioActivoProps> = ({
                 Descripción del Equipo *
               </label>
               <input 
-                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm" 
+                className={`w-full px-4 py-3 border rounded-xl text-sm font-medium outline-none transition-all shadow-sm ${
+                  isNameInvalid 
+                    ? 'border-red-500 bg-red-50/10 focus:ring-4 focus:ring-red-500/10 focus:border-red-500' 
+                    : 'border-slate-300 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'
+                }`} 
                 placeholder="Ej. Sierra Circular 20V" 
                 value={newTool.name || ''} 
                 onChange={e => setNewTool({ ...newTool, name: e.target.value })} 
               />
+              {isNameInvalid && (
+                <span className="text-[10px] text-red-500 font-bold mt-1 block">El nombre/descripción es obligatorio.</span>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
@@ -67,11 +91,18 @@ export const ModalFormularioActivo: React.FC<ModalFormularioActivoProps> = ({
                   No. Serie *
                 </label>
                 <input 
-                  className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none font-mono font-bold uppercase shadow-sm" 
+                  className={`w-full px-4 py-3 border rounded-xl text-sm outline-none font-mono font-bold uppercase shadow-sm ${
+                    isSerialInvalid
+                      ? 'border-red-500 bg-red-50/10 focus:ring-4 focus:ring-red-500/10 focus:border-red-500'
+                      : 'border-slate-300 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500'
+                  }`} 
                   placeholder="SN-XXXX" 
                   value={newTool.serial || ''} 
                   onChange={e => setNewTool({ ...newTool, serial: e.target.value })} 
                 />
+                {isSerialInvalid && (
+                  <span className="text-[10px] text-red-500 font-bold mt-1 block">El número de serie es obligatorio.</span>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
@@ -237,9 +268,8 @@ export const ModalFormularioActivo: React.FC<ModalFormularioActivoProps> = ({
             Descartar
           </button>
           <button 
-            onClick={handleSaveTool} 
-            disabled={!newTool.name || !newTool.serial} 
-            className="px-8 py-3 bg-blue-600 text-white text-sm font-black rounded-xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2"
+            onClick={handleSaveClick} 
+            className="px-8 py-3 bg-blue-600 text-white text-sm font-black rounded-xl shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all flex items-center gap-2"
           >
             <CheckCircle size={18}/> {isEditingTool ? 'Guardar Cambios' : 'Procesar Alta'}
           </button>

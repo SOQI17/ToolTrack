@@ -14,13 +14,15 @@ interface ModalFormularioSolicitudProps {
     client?: string;
   }) => void;
   appZoom: number;
+  addToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> = ({
   selectedTools,
   setShowSolicitudModal,
   onSubmitSolicitud,
-  appZoom
+  appZoom,
+  addToast
 }) => {
   const [targetDate, setTargetDate] = useState<string>(() => {
     const tomorrow = new Date();
@@ -34,11 +36,20 @@ export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> =
   const [client, setClient] = useState<string>('');
 
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [triedSubmit, setTriedSubmit] = useState<boolean>(false);
+
+  const isDestinationInvalid = triedSubmit && !destination.trim();
+  const isPurposeInvalid = triedSubmit && !purpose.trim();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTriedSubmit(true);
     if (!destination.trim() || !purpose.trim() || !targetDate || durationDays <= 0) {
-      alert("Por favor complete los campos obligatorios.");
+      if (addToast) {
+        addToast("Por favor completa todos los campos obligatorios marcados en rojo.", "error");
+      } else {
+        alert("Por favor complete los campos obligatorios.");
+      }
       return;
     }
     setSubmitting(true);
@@ -173,12 +184,18 @@ export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> =
                 </span>
                 <input 
                   type="text"
-                  required
                   placeholder="Ej. Planta Orimec, Coca Codo Sinclair..."
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 focus:border-blue-500 bg-slate-50/50 dark:bg-slate-900/10 dark:text-slate-200 text-sm font-medium transition-all"
+                  className={`w-full pl-9 pr-3 py-2.5 border rounded-xl outline-none focus:ring-4 bg-slate-50/50 dark:bg-slate-900/10 dark:text-slate-200 text-sm font-medium transition-all ${
+                    isDestinationInvalid
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10'
+                      : 'border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-blue-600/10'
+                  }`}
                   value={destination}
                   onChange={e => setDestination(e.target.value)}
                 />
+                {isDestinationInvalid && (
+                  <span className="text-[10px] text-red-500 font-bold mt-1 block">El destino es obligatorio.</span>
+                )}
               </div>
             </div>
 
@@ -226,13 +243,19 @@ export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> =
                   <FileText size={15} />
                 </span>
                 <textarea 
-                  required
                   rows={3}
                   placeholder="Describa brevemente para qué requiere las herramientas..."
-                  className="w-full pl-9 pr-3 py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 focus:border-blue-500 bg-slate-50/50 dark:bg-slate-900/10 dark:text-slate-200 text-sm font-medium transition-all"
+                  className={`w-full pl-9 pr-3 py-2.5 border rounded-xl outline-none focus:ring-4 bg-slate-50/50 dark:bg-slate-900/10 dark:text-slate-200 text-sm font-medium transition-all ${
+                    isPurposeInvalid
+                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10'
+                      : 'border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-blue-600/10'
+                  }`}
                   value={purpose}
                   onChange={e => setPurpose(e.target.value)}
                 />
+                {isPurposeInvalid && (
+                  <span className="text-[10px] text-red-500 font-bold mt-1 block">El motivo del préstamo es obligatorio.</span>
+                )}
               </div>
             </div>
           </div>
@@ -249,7 +272,7 @@ export const ModalFormularioSolicitud: React.FC<ModalFormularioSolicitudProps> =
             </button>
             <button
               type="submit"
-              disabled={submitting || !destination.trim() || !purpose.trim()}
+              disabled={submitting}
               className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all text-sm font-bold shadow-md shadow-blue-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting ? (

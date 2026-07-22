@@ -1725,6 +1725,7 @@ function BodegaContent() {
               selectedToolImage={selectedToolImage}
               setSelectedToolImage={setSelectedToolImage}
               appZoom={appZoom}
+              addToast={addToast}
             />
           )}
 
@@ -1800,6 +1801,7 @@ function BodegaContent() {
               setShowSolicitudModal={setShowSolicitudModal}
               onSubmitSolicitud={handleCreateLoanRequest}
               appZoom={appZoom}
+              addToast={addToast}
             />
           )}
 
