@@ -206,28 +206,42 @@ export const ModalEmisionPrestamo: React.FC<ModalEmisionPrestamoProps> = ({
               <input 
                 className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm" 
                 placeholder="Ej. Planta Sur" 
-                value={newLoan.client} 
-                onChange={e => setNewLoan({ ...newLoan, client: e.target.value })} 
+                value={newLoan.destination || ''} 
+                onChange={e => setNewLoan({ ...newLoan, destination: e.target.value })} 
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                 Naturaleza del Trabajo
               </label>
-              <select 
+              <input 
+                list="naturaleza-options"
                 className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm" 
-                value={newLoan.purpose} 
+                placeholder="Seleccione o escriba..."
+                value={newLoan.purpose || ''} 
                 onChange={e => setNewLoan({ ...newLoan, purpose: e.target.value })}
-              >
-                <option>Mantenimiento</option>
-                <option>Instalación</option>
-                <option>Diagnóstico</option>
-                <option>Obra Civil</option>
-              </select>
+              />
+              <datalist id="naturaleza-options">
+                <option value="Mantenimiento" />
+                <option value="Instalación" />
+                <option value="Diagnóstico" />
+                <option value="Obra Civil" />
+              </datalist>
             </div>
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                Centro de Costo / Proyecto
+                Centro de Costo
+              </label>
+              <input 
+                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm" 
+                placeholder="Código centro de costo (Opcional)" 
+                value={newLoan.client || ''} 
+                onChange={e => setNewLoan({ ...newLoan, client: e.target.value })} 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                Proyecto
               </label>
               <input 
                 className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm" 

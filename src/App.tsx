@@ -213,7 +213,7 @@ function BodegaContent() {
   const [loanDateFrom, setLoanDateFrom] = useState('');
   const [loanDateTo, setLoanDateTo] = useState('');
 
-  const [newLoan, setNewLoan] = useState({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '' });
+  const [newLoan, setNewLoan] = useState({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '', destination: '' });
   const [currentLoanTools, setCurrentLoanTools] = useState<ToolItem[]>([]);
   const [loanSearchTerm, setLoanSearchTerm] = useState('');
 
@@ -801,7 +801,8 @@ function BodegaContent() {
       dateOut: new Date().toISOString(), 
       dateIn: null, 
       client: newLoan.client || 'Interno', 
-      project: newLoan.project || 'General' 
+      project: newLoan.project || 'General',
+      destination: newLoan.destination || 'Oficina' 
     };
     try {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'), loanData);
@@ -811,7 +812,7 @@ function BodegaContent() {
       });
       await batch.commit();
       setShowLoanModal(false);
-      setNewLoan({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '' });
+      setNewLoan({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '', destination: '' });
       setCurrentLoanTools([]);
       setLoanSearchTerm('');
       setActivityLog(prev => [

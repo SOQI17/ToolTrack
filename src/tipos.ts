@@ -87,6 +87,7 @@ export interface Loan {
   purpose: string;
   project?: string;
   client?: string;
+  destination?: string;
   toolId?: string;
   returnCondition?: string;
   returnedBy?: string;
