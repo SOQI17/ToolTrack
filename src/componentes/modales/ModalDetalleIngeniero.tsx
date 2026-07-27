@@ -1,6 +1,6 @@
-import React from 'react';
-import { X, Users, CheckCircle } from 'lucide-react';
-import type { Engineer, Loan, ConsumableLog } from '../../tipos';
+import React, { useState } from 'react';
+import { X, Users, CheckCircle, Edit, Save } from 'lucide-react';
+import type { Engineer, Loan, ConsumableLog, UserRole } from '../../tipos';
 
 interface ModalDetalleIngenieroProps {
   selectedEngineer: Engineer;
@@ -12,6 +12,11 @@ interface ModalDetalleIngenieroProps {
   appZoom: number;
   email?: string;
   createdAt?: string;
+  lastLogin?: string;
+  userRole?: UserRole;
+  isAdmin?: boolean;
+  onUpdateEngineer?: (id: string, updatedData: Partial<Engineer>) => Promise<void>;
+  onUpdateUserRole?: (uid: string, role: UserRole) => Promise<void>;
 }
 
 export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
@@ -23,8 +28,42 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
   getEngineerConsumables,
   appZoom,
   email,
-  createdAt
+  createdAt,
+  lastLogin,
+  userRole,
+  isAdmin,
+  onUpdateEngineer,
+  onUpdateUserRole
 }) => {
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editName, setEditName] = useState<string>(selectedEngineer.name);
+  const [editDepartment, setEditDepartment] = useState<string>(selectedEngineer.department);
+  const [editStatus, setEditStatus] = useState<'active' | 'inactive'>(selectedEngineer.status || 'active');
+  const [editRole, setEditRole] = useState<UserRole>(userRole || 'ingeniero');
+  const [saving, setSaving] = useState<boolean>(false);
+
+  const handleSave = async () => {
+    if (!editName.trim()) return;
+    setSaving(true);
+    try {
+      if (onUpdateEngineer) {
+        await onUpdateEngineer(selectedEngineer.id, {
+          name: editName.trim(),
+          department: editDepartment,
+          status: editStatus
+        });
+      }
+      if (email && onUpdateUserRole && userRole !== editRole) {
+        await onUpdateUserRole(selectedEngineer.id, editRole);
+      }
+      setIsEditing(false);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in" 
@@ -35,46 +74,161 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
           <div className="absolute right-0 top-0 opacity-5 pointer-events-none translate-x-1/4 -translate-y-1/4">
             <Users size={300}/>
           </div>
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl border border-blue-400/30 flex items-center justify-center text-white text-5xl font-black shadow-2xl shadow-blue-900/50">
-              {selectedEngineer.name.charAt(0)}
+          
+          <div className="flex items-center gap-6 relative z-10 flex-1">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl border border-blue-400/30 flex items-center justify-center text-white text-5xl font-black shadow-2xl shadow-blue-900/50 shrink-0">
+              {editName ? editName.charAt(0) : selectedEngineer.name.charAt(0)}
             </div>
-            <div>
-              <p className="text-blue-400 font-bold tracking-widest uppercase text-[10px] mb-1.5">
-                Expediente de Personal
-              </p>
-              <h2 className="text-3xl font-black tracking-tight mb-2 leading-none">
-                {selectedEngineer.name}
-              </h2>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-lg text-xs border border-white/5">
-                  {selectedEngineer.department}
-                </span>
+            
+            {isEditing ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                    Nombre Completo *
+                  </label>
+                  <input 
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-bold text-white outline-none focus:border-blue-500 transition-all"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                    Departamento / Área *
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none focus:border-blue-500 transition-all"
+                    value={editDepartment}
+                    onChange={e => setEditDepartment(e.target.value)}
+                  >
+                    <option value="Mantenimiento">Mantenimiento</option>
+                    <option value="Operaciones">Operaciones</option>
+                    <option value="Instrumentación">Instrumentación</option>
+                    <option value="Telecomunicaciones">Telecomunicaciones</option>
+                    <option value="Seguridad y Control">Seguridad y Control</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                    Estado Laboral *
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none focus:border-blue-500 transition-all"
+                    value={editStatus}
+                    onChange={e => setEditStatus(e.target.value as 'active' | 'inactive')}
+                  >
+                    <option value="active">Activo</option>
+                    <option value="inactive">Inactivo (Ocultar/Blur)</option>
+                  </select>
+                </div>
                 {email ? (
-                  <>
-                    <span className="text-blue-300 font-semibold bg-blue-500/10 px-3 py-1 rounded-lg text-xs border border-blue-500/10">
-                      {email}
-                    </span>
-                    {createdAt && (
-                      <span className="text-slate-400 font-medium text-[11px] font-mono ml-1">
-                        Registrado: {new Date(createdAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                      Rol de Acceso al Sistema *
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none focus:border-blue-500 transition-all"
+                      value={editRole}
+                      onChange={e => setEditRole(e.target.value as UserRole)}
+                    >
+                      <option value="admin">Administrador</option>
+                      <option value="bodeguero">Bodeguero</option>
+                      <option value="ingeniero">Ingeniero</option>
+                    </select>
+                  </div>
                 ) : (
-                  <span className="text-slate-400 font-semibold bg-white/5 px-3 py-1 rounded-lg text-xs border border-white/5">
-                    Sin cuenta de acceso
-                  </span>
+                  <div className="flex items-end pb-2">
+                    <span className="text-xs text-slate-500 italic">Técnico sin cuenta de acceso al sistema</span>
+                  </div>
                 )}
+                
+                <div className="md:col-span-2 flex justify-end gap-2 mt-2">
+                  <button 
+                    onClick={() => setIsEditing(false)} 
+                    disabled={saving}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-all border border-slate-700"
+                  >
+                    Descartar
+                  </button>
+                  <button 
+                    onClick={handleSave} 
+                    disabled={saving || !editName.trim()}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-900/50 flex items-center gap-1.5"
+                  >
+                    <Save size={13}/> Guardar
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <p className="text-blue-400 font-bold tracking-widest uppercase text-[10px] mb-1.5">
+                  Expediente de Personal
+                </p>
+                <h2 className="text-3xl font-black tracking-tight mb-2 leading-none">
+                  {selectedEngineer.name}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-slate-300 font-semibold bg-white/10 px-3 py-1 rounded-lg text-xs border border-white/5">
+                    {selectedEngineer.department}
+                  </span>
+                  
+                  {selectedEngineer.status === 'inactive' && (
+                    <span className="text-red-300 font-semibold bg-red-500/10 px-3 py-1 rounded-lg text-xs border border-red-500/10 uppercase tracking-wider">
+                      Inactivo
+                    </span>
+                  )}
+                  
+                  {email ? (
+                    <>
+                      <span className="text-blue-300 font-semibold bg-blue-500/10 px-3 py-1 rounded-lg text-xs border border-blue-500/10">
+                        {email} ({userRole === 'admin' ? 'Administrador' : userRole === 'bodeguero' ? 'Bodeguero' : 'Ingeniero'})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-slate-400 font-semibold bg-white/5 px-3 py-1 rounded-lg text-xs border border-white/5">
+                      Sin cuenta de acceso
+                    </span>
+                  )}
+                </div>
+                
+                <div className="flex flex-col gap-1 mt-4 text-slate-400 text-[11px] font-mono">
+                  {createdAt && (
+                    <span>
+                      📅 Registro del perfil: {new Date(createdAt).toLocaleDateString()} {new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                  {email && (
+                    <span>
+                      🔑 Último acceso al sistema: {lastLogin ? `${new Date(lastLogin).toLocaleDateString()} ${new Date(lastLogin).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Nunca'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <button 
-            onClick={() => setShowEngineerDetailsModal(false)} 
-            className="bg-white/5 hover:bg-white/20 p-2 rounded-full transition-colors relative z-10 border border-transparent hover:border-white/10"
-          >
-            <X size={20}/>
-          </button>
+          
+          <div className="flex items-center gap-2 relative z-10">
+            {isAdmin && !isEditing && (
+              <button 
+                onClick={() => {
+                  setEditName(selectedEngineer.name);
+                  setEditDepartment(selectedEngineer.department);
+                  setEditStatus(selectedEngineer.status || 'active');
+                  setEditRole(userRole || 'ingeniero');
+                  setIsEditing(true);
+                }} 
+                className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all border border-white/10 hover:border-white/20 mr-2 flex items-center gap-1.5 shadow-sm"
+              >
+                <Edit size={13}/> Editar
+              </button>
+            )}
+            <button 
+              onClick={() => setShowEngineerDetailsModal(false)} 
+              className="bg-white/5 hover:bg-white/20 p-2 rounded-full transition-colors border border-transparent hover:border-white/10"
+            >
+              <X size={20}/>
+            </button>
+          </div>
         </div>
         
         <div className="flex border-b border-slate-200 bg-slate-50/80 px-8 gap-8 shadow-sm z-10 relative shrink-0 overflow-x-auto custom-scrollbar">

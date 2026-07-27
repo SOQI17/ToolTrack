@@ -58,6 +58,8 @@ export interface Engineer {
   id: string;
   name: string;
   department: string;
+  status?: 'active' | 'inactive';
+  createdAt?: string;
 }
 
 export type UserRole = 'admin' | 'bodeguero' | 'ingeniero';
@@ -112,6 +114,7 @@ export interface UserItem {
   email: string;
   role: UserRole;
   createdAt: string;
+  lastLogin?: string;
 }
 
 export interface LoanRequest {

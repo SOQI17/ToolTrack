@@ -31,34 +31,46 @@ export const TabPersonal: React.FC<TabPersonalProps> = ({
       
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {engineers.map(e => (
-            <div 
-              key={e.id} 
-              onClick={() => handleOpenEngineerDetails(e)} 
-              className="dm-surface p-5 rounded-2xl shadow-sm border dm-border relative group cursor-pointer hover:border-blue-400 hover:shadow-md transition-all flex flex-col items-center text-center"
-            >
-              <button 
-                onClick={(ev) => {
-                  ev.stopPropagation(); 
-                  handleDeleteEngineer(e.id);
-                }} 
-                className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1.5"
+          {engineers.map(e => {
+            const isInactive = e.status === 'inactive';
+            return (
+              <div 
+                key={e.id} 
+                onClick={() => handleOpenEngineerDetails(e)} 
+                className={`dm-surface p-5 rounded-2xl shadow-sm border dm-border relative group cursor-pointer hover:border-blue-400 hover:shadow-md transition-all flex flex-col items-center text-center ${
+                  isInactive ? 'opacity-60 grayscale blur-[0.8px]' : ''
+                }`}
               >
-                <Trash2 size={16}/>
-              </button>
-              
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500/10 to-blue-600/20 border dm-border flex items-center justify-center dm-text font-black text-2xl mb-4 shadow-sm group-hover:scale-105 transition-transform">
-                {e.name.charAt(0)}
+                <button 
+                  onClick={(ev) => {
+                    ev.stopPropagation(); 
+                    handleDeleteEngineer(e.id);
+                  }} 
+                  className="absolute top-3 right-3 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1.5"
+                >
+                  <Trash2 size={16}/>
+                </button>
+                
+                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500/10 to-blue-600/20 border dm-border flex items-center justify-center dm-text font-black text-2xl mb-4 shadow-sm group-hover:scale-105 transition-transform">
+                  {e.name.charAt(0)}
+                </div>
+                
+                <div className="w-full">
+                  <p className="font-bold dm-text text-[15px] truncate">{e.name}</p>
+                  <p className="text-[10px] font-bold dm-text3 uppercase tracking-widest mt-1 dm-surface2 px-2 py-0.5 rounded-md border dm-border inline-block">
+                    {e.department}
+                  </p>
+                  {isInactive && (
+                    <div className="mt-1.5">
+                      <span className="text-[9px] font-black text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md uppercase tracking-wider inline-block">
+                        Inactivo
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-              
-              <div className="w-full">
-                <p className="font-bold dm-text text-[15px] truncate">{e.name}</p>
-                <p className="text-[10px] font-bold dm-text3 uppercase tracking-widest mt-1 dm-surface2 px-2 py-0.5 rounded-md border dm-border inline-block">
-                  {e.department}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {engineers.length === 0 && (
             <div className="col-span-full py-12 text-center text-slate-400 font-medium bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
               No hay personal registrado en el sistema.

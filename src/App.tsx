@@ -253,7 +253,9 @@ function BodegaContent() {
             let finalName = data.name || 'Usuario';
             if (currentUserRes.email === 'alexis.guerra@orimec.com.ec' && finalRole !== 'admin') {
               finalRole = 'admin';
-              await updateDoc(userDocRef, { role: 'admin' });
+              await updateDoc(userDocRef, { role: 'admin', lastLogin: new Date().toISOString() });
+            } else {
+              await updateDoc(userDocRef, { lastLogin: new Date().toISOString() });
             }
             setCurrentUser(finalName);
             setAppUser({ name: finalName, role: finalRole });
@@ -271,7 +273,8 @@ function BodegaContent() {
               name: fallbackName,
               email: currentUserRes.email || '',
               role: fallbackRole,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              lastLogin: new Date().toISOString()
             });
             setCurrentUser(fallbackName);
             setAppUser({ name: fallbackName, role: fallbackRole });
@@ -1020,10 +1023,36 @@ function BodegaContent() {
       alert("Ya existe un perfil técnico con este nombre.");
       return;
     }
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'engineers'), newEngineer);
+    const engineerData = {
+      ...newEngineer,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'engineers'), engineerData);
     setShowEngineerModal(false);
     setNewEngineer({ name: '', department: '' });
     addToast('Perfil técnico creado correctamente.', 'success');
+  };
+
+  const handleUpdateEngineer = async (id: string, updatedData: Partial<Engineer>) => {
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', id), updatedData);
+      if (selectedEngineer && selectedEngineer.id === id) {
+        setSelectedEngineer(prev => prev ? { ...prev, ...updatedData } : null);
+      }
+      addToast('Perfil técnico actualizado correctamente.', 'success');
+    } catch (e: any) {
+      addToast('Error al actualizar el perfil: ' + e.message, 'error');
+    }
+  };
+
+  const handleUpdateUserRole = async (uid: string, role: UserRole) => {
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', uid), { role });
+      addToast('Rol del usuario actualizado correctamente.', 'success');
+    } catch (e: any) {
+      addToast('Error al actualizar el rol: ' + e.message, 'error');
+    }
   };
 
   const handleDeleteEngineer = async (id: string) => {
@@ -1782,7 +1811,12 @@ function BodegaContent() {
               getEngineerConsumables={getEngineerConsumables}
               appZoom={appZoom}
               email={systemUsers.find(u => u.uid === selectedEngineer.id)?.email}
-              createdAt={systemUsers.find(u => u.uid === selectedEngineer.id)?.createdAt}
+              createdAt={selectedEngineer.createdAt || systemUsers.find(u => u.uid === selectedEngineer.id)?.createdAt}
+              lastLogin={systemUsers.find(u => u.uid === selectedEngineer.id)?.lastLogin}
+              userRole={systemUsers.find(u => u.uid === selectedEngineer.id)?.role}
+              isAdmin={appUser?.role === 'admin'}
+              onUpdateEngineer={handleUpdateEngineer}
+              onUpdateUserRole={handleUpdateUserRole}
             />
           )}
 
