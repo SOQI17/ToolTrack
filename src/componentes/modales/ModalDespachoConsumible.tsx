@@ -33,6 +33,9 @@ export const ModalDespachoConsumible: React.FC<ModalDespachoConsumibleProps> = (
           </div>
           <h3 className="font-black text-2xl text-slate-900 leading-tight tracking-tight">Despachar Insumo</h3>
           <p className="text-blue-600 font-bold mt-1 text-sm">{selectedConsumable.name}</p>
+          {selectedConsumable.partNumber && (
+            <p className="text-slate-400 font-mono text-[10px] mt-0.5">P/N: {selectedConsumable.partNumber}</p>
+          )}
         </div>
         
         <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mb-6 flex justify-between items-center shadow-inner">

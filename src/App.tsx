@@ -222,7 +222,7 @@ function BodegaContent() {
     name: '', category: 'Eléctricas', serial: '', orimec: '', status: 'available', condition: 'Buena', abcCategory: 'B', quantity: 1, imageUrl: '', files: [], maintenanceHistory: []
   });
   const [newConsumable, setNewConsumable] = useState<Partial<ConsumableItem>>({
-    name: '', category: 'General', quantity: 0, minStock: 5, unit: 'unidades'
+    name: '', category: 'General', quantity: 0, minStock: 5, unit: 'unidades', partNumber: ''
   });
   const [newMaintenance, setNewMaintenance] = useState({
     description: '', cost: 0, technician: '', isCalibration: false, newLastCal: '', newNextCal: ''
@@ -718,7 +718,7 @@ function BodegaContent() {
     if (user && newConsumable.name) {
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'consumables'), newConsumable);
       setShowConsumableModal(false);
-      setNewConsumable({ name: '', quantity: 0, minStock: 5 });
+      setNewConsumable({ name: '', category: 'General', quantity: 0, minStock: 5, unit: 'unidades', partNumber: '' });
     }
   };
 

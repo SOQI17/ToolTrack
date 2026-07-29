@@ -53,9 +53,16 @@ export const TabConsumibles: React.FC<TabConsumiblesProps> = ({
                 <p className="text-[10px] font-bold dm-text3 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <Package size={12}/> {c.category}
                 </p>
-                <h3 className="font-bold dm-text text-sm mb-4 pr-6 leading-tight whitespace-normal">
+                <h3 className="font-bold dm-text text-sm mb-1 pr-6 leading-tight whitespace-normal">
                   {c.name}
                 </h3>
+                {c.partNumber ? (
+                  <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mb-3 font-semibold">
+                    P/N: {c.partNumber}
+                  </p>
+                ) : (
+                  <div className="h-4 mb-3" />
+                )}
               </div>
               
               {/* Barra de stock */}

@@ -52,6 +52,7 @@ export interface ConsumableItem {
   quantity: number;
   minStock: number;
   unit: string;
+  partNumber?: string;
 }
 
 export interface Engineer {

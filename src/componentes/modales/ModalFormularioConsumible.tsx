@@ -64,6 +64,18 @@ export const ModalFormularioConsumible: React.FC<ModalFormularioConsumibleProps>
           
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
+              Número de Parte / Código de Producto
+            </label>
+            <input 
+              className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none text-sm font-medium shadow-sm" 
+              placeholder="Ej. P/N 12345-ABC (Opcional)" 
+              value={newConsumable.partNumber || ''} 
+              onChange={e => setNewConsumable({ ...newConsumable, partNumber: e.target.value })} 
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1.5">
               Unidad Logística
             </label>
             <input 
