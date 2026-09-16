@@ -85,6 +85,44 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
+export const normalizeText = (str: string = '') => {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+export const findSystemUserForEngineer = (
+  eng: Engineer | null | undefined, 
+  usersList: UserItem[] = []
+): UserItem | undefined => {
+  if (!eng) return undefined;
+  
+  // 1. Direct UID match
+  const byUid = usersList.find(u => u.uid === eng.id);
+  if (byUid) return byUid;
+
+  const normEng = normalizeText(eng.name);
+  if (!normEng) return undefined;
+
+  // 2. Exact normalized name match
+  const byExactName = usersList.find(u => normalizeText(u.name) === normEng);
+  if (byExactName) return byExactName;
+
+  // 3. Partial / contains name match (e.g. "FRANCISCO SOTOMAYOR" matches "Francisco" or vice versa)
+  const byPartialName = usersList.find(u => {
+    const normUser = normalizeText(u.name);
+    if (!normUser) return false;
+    return normEng.includes(normUser) || normUser.includes(normEng);
+  });
+  if (byPartialName) return byPartialName;
+
+  return undefined;
+};
+
 function BodegaContent() {
   const [user, setUser] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<string>('');
@@ -370,18 +408,9 @@ function BodegaContent() {
   const deduplicateEngineers = async () => {
     if (appUser?.role !== 'admin' || engineers.length === 0) return;
     
-    const normalizeName = (name: string) => {
-      return name
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-    };
-
     const groups: { [key: string]: Engineer[] } = {};
     engineers.forEach(eng => {
-      const norm = normalizeName(eng.name);
+      const norm = normalizeText(eng.name);
       if (!groups[norm]) groups[norm] = [];
       groups[norm].push(eng);
     });
@@ -389,7 +418,14 @@ function BodegaContent() {
     for (const norm in groups) {
       const engs = groups[norm];
       if (engs.length > 1) {
-        engs.sort((a, b) => b.id.length - a.id.length);
+        // Prioritize preserving the ID that exists in systemUsers (Auth UID)
+        engs.sort((a, b) => {
+          const aIsUser = systemUsers.some(u => u.uid === a.id);
+          const bIsUser = systemUsers.some(u => u.uid === b.id);
+          if (aIsUser && !bIsUser) return -1;
+          if (!aIsUser && bIsUser) return 1;
+          return b.id.length - a.id.length;
+        });
         const keep = engs[0];
         const duplicatesToRemove = engs.slice(1);
 
@@ -409,13 +445,19 @@ function BodegaContent() {
           // Migrate consumables
           const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === dupe.id);
           matchedConsumables.forEach(cl => {
-            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { engineerId: keep.id });
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { 
+              engineerId: keep.id,
+              engineerName: keep.name
+            });
           });
 
           // Migrate requests
           const matchedRequests = loanRequests.filter(r => r.engineerUid === dupe.id);
           matchedRequests.forEach(r => {
-            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { engineerUid: keep.id });
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { 
+              engineerUid: keep.id,
+              engineerName: keep.name
+            });
           });
         }
 
@@ -429,6 +471,63 @@ function BodegaContent() {
     }
   };
 
+  // Reconciliación automática de ingenieros creados manualmente con cuentas existentes de Auth (systemUsers)
+  useEffect(() => {
+    if (appUser?.role !== 'admin' || engineers.length === 0 || systemUsers.length === 0) return;
+
+    const reconcileEngineersWithUsers = async () => {
+      for (const eng of engineers) {
+        // If this engineer's ID is already a system user UID, skip
+        if (systemUsers.some(u => u.uid === eng.id)) continue;
+
+        // Check if there is a matching system user by name or partial name
+        const matchedUser = findSystemUserForEngineer(eng, systemUsers);
+        if (matchedUser && !engineers.some(e => e.id === matchedUser.uid)) {
+          console.log(`Reconciling manual engineer "${eng.name}" (${eng.id}) -> Auth UID (${matchedUser.uid})`);
+          try {
+            const batch = writeBatch(db);
+            const finalName = eng.name.trim().length >= matchedUser.name.trim().length ? eng.name.trim() : matchedUser.name.trim();
+
+            batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', matchedUser.uid), {
+              id: matchedUser.uid,
+              name: finalName,
+              department: eng.department || 'Ingeniería',
+              status: eng.status || 'active',
+              createdAt: eng.createdAt || matchedUser.createdAt || new Date().toISOString()
+            }, { merge: true });
+
+            batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', eng.id));
+
+            loans.filter(l => l.engineerId === eng.id).forEach(l => {
+              batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: matchedUser.uid });
+            });
+
+            consumableLogs.filter(cl => cl.engineerId === eng.id).forEach(cl => {
+              batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { 
+                engineerId: matchedUser.uid,
+                engineerName: finalName
+              });
+            });
+
+            loanRequests.filter(r => r.engineerUid === eng.id).forEach(r => {
+              batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { 
+                engineerUid: matchedUser.uid,
+                engineerName: finalName
+              });
+            });
+
+            await batch.commit();
+          } catch (err) {
+            console.error("Error auto-reconciling engineer with user:", err);
+          }
+        }
+      }
+    };
+
+    const timer = setTimeout(reconcileEngineersWithUsers, 1000);
+    return () => clearTimeout(timer);
+  }, [appUser, engineers, systemUsers]);
+
   useEffect(() => {
     if (appUser?.role === 'admin' && engineers.length > 0 && !hasDeduplicated.current) {
       hasDeduplicated.current = true;
@@ -437,7 +536,7 @@ function BodegaContent() {
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [appUser, engineers]);
+  }, [appUser, engineers, systemUsers]);
 
   // Accesos rápidos de teclado
   useEffect(() => {
@@ -1071,52 +1170,158 @@ function BodegaContent() {
     const sourceEng = engineers.find(e => e.id === sourceId);
     if (!targetEng || !sourceEng) return;
 
-    if (!window.confirm(`¿Confirmas la fusión de "${sourceEng.name}" dentro de "${targetEng.name}"? Todos los préstamos, herramientas asignadas, consumibles y solicitudes se transferirán a "${targetEng.name}".`)) {
+    if (!window.confirm(`¿Confirmas la fusión entre "${sourceEng.name}" y "${targetEng.name}"? Todos los préstamos, herramientas asignadas, consumibles y solicitudes se unificarán.`)) {
       return;
     }
 
     try {
       const batch = writeBatch(db);
 
-      // 1. Migrate loans
-      const matchedLoans = loans.filter(l => l.engineerId === sourceId);
-      matchedLoans.forEach(l => {
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: targetId });
-      });
+      // Prioritize preserving the ID that corresponds to a real Firebase Auth account in systemUsers
+      const targetIsUser = systemUsers.some(u => u.uid === targetId);
+      const sourceIsUser = systemUsers.some(u => u.uid === sourceId);
 
-      // 2. Migrate consumables
-      const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === sourceId);
-      matchedConsumables.forEach(cl => {
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { engineerId: targetId });
-      });
+      let masterId = targetId;
+      let removeId = sourceId;
 
-      // 3. Migrate loan requests
-      const matchedRequests = loanRequests.filter(r => r.engineerUid === sourceId);
-      matchedRequests.forEach(r => {
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { engineerUid: targetId });
-      });
-
-      // 4. Preserve longer full name if source had it
-      let finalName = targetEng.name;
-      if (sourceEng.name.trim().length > targetEng.name.trim().length) {
-        finalName = sourceEng.name.trim();
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', targetId), { name: finalName });
+      if (!targetIsUser && sourceIsUser) {
+        // Source is the real Auth account! Use sourceId as masterId
+        masterId = sourceId;
+        removeId = targetId;
+      } else if (!targetIsUser && !sourceIsUser) {
+        const targetUserMatch = findSystemUserForEngineer(targetEng, systemUsers);
+        const sourceUserMatch = findSystemUserForEngineer(sourceEng, systemUsers);
+        if (!targetUserMatch && sourceUserMatch) {
+          masterId = sourceUserMatch.uid;
+        } else if (targetUserMatch) {
+          masterId = targetUserMatch.uid;
+        }
       }
 
-      // 5. Delete source duplicate engineer
-      batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', sourceId));
+      // Determine best full name (longer name)
+      let finalName = targetEng.name.trim();
+      if (sourceEng.name.trim().length > finalName.length) {
+        finalName = sourceEng.name.trim();
+      }
+
+      const finalDept = targetEng.department || sourceEng.department || 'Ingeniería';
+      const finalStatus = targetEng.status === 'inactive' && sourceEng.status === 'inactive' ? 'inactive' : 'active';
+      const finalCreatedAt = targetEng.createdAt || sourceEng.createdAt || new Date().toISOString();
+
+      // 1. Set master engineer doc
+      batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', masterId), {
+        id: masterId,
+        name: finalName,
+        department: finalDept,
+        status: finalStatus,
+        createdAt: finalCreatedAt
+      }, { merge: true });
+
+      // 2. Delete duplicate engineer doc if different from master
+      if (removeId !== masterId) {
+        batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', removeId));
+      }
+      if (targetId !== masterId && targetId !== removeId) {
+        batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', targetId));
+      }
+      if (sourceId !== masterId && sourceId !== removeId) {
+        batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', sourceId));
+      }
+
+      // 3. Migrate loans
+      const matchedLoans = loans.filter(l => (l.engineerId === targetId || l.engineerId === sourceId) && l.engineerId !== masterId);
+      matchedLoans.forEach(l => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: masterId });
+      });
+
+      // 4. Migrate consumables
+      const matchedConsumables = consumableLogs.filter(cl => (cl.engineerId === targetId || cl.engineerId === sourceId) && cl.engineerId !== masterId);
+      matchedConsumables.forEach(cl => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { 
+          engineerId: masterId,
+          engineerName: finalName
+        });
+      });
+
+      // 5. Migrate requests
+      const matchedRequests = loanRequests.filter(r => (r.engineerUid === targetId || r.engineerUid === sourceId) && r.engineerUid !== masterId);
+      matchedRequests.forEach(r => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { 
+          engineerUid: masterId,
+          engineerName: finalName
+        });
+      });
 
       await batch.commit();
 
-      if (selectedEngineer?.id === sourceId) {
-        setSelectedEngineer({ ...targetEng, name: finalName });
-      } else if (selectedEngineer?.id === targetId) {
-        setSelectedEngineer({ ...targetEng, name: finalName });
-      }
+      const updatedObj: Engineer = {
+        id: masterId,
+        name: finalName,
+        department: finalDept,
+        status: finalStatus,
+        createdAt: finalCreatedAt
+      };
+      setSelectedEngineer(updatedObj);
 
-      addToast(`Perfiles fusionados exitosamente en "${finalName}".`, 'success');
+      addToast(`Perfiles fusionados y vinculados exitosamente a la cuenta de "${finalName}".`, 'success');
     } catch (e: any) {
       addToast(`Error al fusionar perfiles: ${e.message}`, 'error');
+    }
+  };
+
+  const handleLinkUserAccount = async (engineerId: string, userUid: string) => {
+    if (!user || !engineerId || !userUid) return;
+    const eng = engineers.find(e => e.id === engineerId);
+    const sysUser = systemUsers.find(u => u.uid === userUid);
+    if (!eng || !sysUser) return;
+
+    try {
+      const batch = writeBatch(db);
+      const finalName = eng.name.trim().length >= sysUser.name.trim().length ? eng.name.trim() : sysUser.name.trim();
+
+      batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', userUid), {
+        id: userUid,
+        name: finalName,
+        department: eng.department || 'Ingeniería',
+        status: eng.status || 'active',
+        createdAt: eng.createdAt || sysUser.createdAt || new Date().toISOString()
+      }, { merge: true });
+
+      if (engineerId !== userUid) {
+        batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', engineerId));
+
+        loans.filter(l => l.engineerId === engineerId).forEach(l => {
+          batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: userUid });
+        });
+
+        consumableLogs.filter(cl => cl.engineerId === engineerId).forEach(cl => {
+          batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { 
+            engineerId: userUid,
+            engineerName: finalName
+          });
+        });
+
+        loanRequests.filter(r => r.engineerUid === engineerId).forEach(r => {
+          batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { 
+            engineerUid: userUid,
+            engineerName: finalName
+          });
+        });
+      }
+
+      await batch.commit();
+
+      setSelectedEngineer({
+        id: userUid,
+        name: finalName,
+        department: eng.department || 'Ingeniería',
+        status: eng.status || 'active',
+        createdAt: eng.createdAt || sysUser.createdAt
+      });
+
+      addToast(`Cuenta "${sysUser.email}" vinculada exitosamente al perfil.`, 'success');
+    } catch (e: any) {
+      addToast(`Error al vincular cuenta: ${e.message}`, 'error');
     }
   };
 
@@ -1722,6 +1927,7 @@ function BodegaContent() {
           {activeTab === 'engineers' && (
             <TabPersonal 
               engineers={engineers}
+              systemUsers={systemUsers}
               setShowEngineerModal={setShowEngineerModal}
               handleOpenEngineerDetails={handleOpenEngineerDetails}
               handleDeleteEngineer={handleDeleteEngineer}
@@ -1908,30 +2114,36 @@ function BodegaContent() {
             />
           )}
 
-          {showEngineerDetailsModal && selectedEngineer && (
-            <ModalDetalleIngeniero 
-              selectedEngineer={selectedEngineer}
-              setShowEngineerDetailsModal={setShowEngineerDetailsModal}
-              engineerModalTab={engineerModalTab}
-              setEngineerModalTab={setEngineerModalTab}
-              getEngineerLoans={getEngineerLoans}
-              getEngineerConsumables={getEngineerConsumables}
-              appZoom={appZoom}
-              email={systemUsers.find(u => u.uid === selectedEngineer.id)?.email}
-              createdAt={selectedEngineer.createdAt || systemUsers.find(u => u.uid === selectedEngineer.id)?.createdAt}
-              lastLogin={systemUsers.find(u => u.uid === selectedEngineer.id)?.lastLogin}
-              userRole={systemUsers.find(u => u.uid === selectedEngineer.id)?.role}
-              isAdmin={appUser?.role === 'admin'}
-              engineers={engineers}
-              loans={loans}
-              tools={tools}
-              onUpdateEngineer={handleUpdateEngineer}
-              onUpdateUserRole={handleUpdateUserRole}
-              onMergeEngineers={handleMergeEngineers}
-              onAssignPersonalTools={handleAssignPersonalTools}
-              onUnassignPersonalTool={handleUnassignPersonalTool}
-            />
-          )}
+          {showEngineerDetailsModal && selectedEngineer && (() => {
+            const matchedUser = findSystemUserForEngineer(selectedEngineer, systemUsers);
+            return (
+              <ModalDetalleIngeniero 
+                selectedEngineer={selectedEngineer}
+                setShowEngineerDetailsModal={setShowEngineerDetailsModal}
+                engineerModalTab={engineerModalTab}
+                setEngineerModalTab={setEngineerModalTab}
+                getEngineerLoans={getEngineerLoans}
+                getEngineerConsumables={getEngineerConsumables}
+                appZoom={appZoom}
+                email={matchedUser?.email}
+                createdAt={selectedEngineer.createdAt || matchedUser?.createdAt}
+                lastLogin={matchedUser?.lastLogin}
+                userRole={matchedUser?.role}
+                systemUserId={matchedUser?.uid}
+                systemUsers={systemUsers}
+                isAdmin={appUser?.role === 'admin'}
+                engineers={engineers}
+                loans={loans}
+                tools={tools}
+                onUpdateEngineer={handleUpdateEngineer}
+                onUpdateUserRole={handleUpdateUserRole}
+                onMergeEngineers={handleMergeEngineers}
+                onAssignPersonalTools={handleAssignPersonalTools}
+                onUnassignPersonalTool={handleUnassignPersonalTool}
+                onLinkUserAccount={handleLinkUserAccount}
+              />
+            );
+          })()}
 
           {showEngineerModal && (
             <ModalFormularioIngeniero 

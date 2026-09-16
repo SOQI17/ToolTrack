@@ -1,9 +1,10 @@
 import React from 'react';
-import { UserPlus, Trash2 } from 'lucide-react';
-import type { Engineer } from '../tipos';
+import { UserPlus, Trash2, Key } from 'lucide-react';
+import type { Engineer, UserItem } from '../tipos';
 
 interface TabPersonalProps {
   engineers: Engineer[];
+  systemUsers?: UserItem[];
   setShowEngineerModal: (show: boolean) => void;
   handleOpenEngineerDetails: (eng: Engineer) => void;
   handleDeleteEngineer: (id: string) => void;
@@ -11,6 +12,7 @@ interface TabPersonalProps {
 
 export const TabPersonal: React.FC<TabPersonalProps> = ({
   engineers,
+  systemUsers = [],
   setShowEngineerModal,
   handleOpenEngineerDetails,
   handleDeleteEngineer
@@ -33,6 +35,12 @@ export const TabPersonal: React.FC<TabPersonalProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
           {engineers.map(e => {
             const isInactive = e.status === 'inactive';
+            const linkedUser = systemUsers.find(u => u.uid === e.id) || systemUsers.find(u => {
+              const nu = u.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const ne = e.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+              return nu && ne && (nu.includes(ne) || ne.includes(nu));
+            });
+
             return (
               <div 
                 key={e.id} 
@@ -60,13 +68,19 @@ export const TabPersonal: React.FC<TabPersonalProps> = ({
                   <p className="text-[10px] font-bold dm-text3 uppercase tracking-widest mt-1 dm-surface2 px-2 py-0.5 rounded-md border dm-border inline-block">
                     {e.department}
                   </p>
-                  {isInactive && (
-                    <div className="mt-1.5">
+                  
+                  <div className="flex flex-wrap justify-center gap-1 mt-1.5">
+                    {linkedUser && (
+                      <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                        <Key size={10}/> {linkedUser.email}
+                      </span>
+                    )}
+                    {isInactive && (
                       <span className="text-[9px] font-black text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md uppercase tracking-wider inline-block">
                         Inactivo
                       </span>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             );

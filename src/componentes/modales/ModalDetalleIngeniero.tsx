@@ -17,6 +17,8 @@ interface ModalDetalleIngenieroProps {
   createdAt?: string;
   lastLogin?: string;
   userRole?: UserRole;
+  systemUserId?: string;
+  systemUsers?: UserItem[];
   isAdmin?: boolean;
   engineers?: Engineer[];
   loans?: Loan[];
@@ -26,6 +28,7 @@ interface ModalDetalleIngenieroProps {
   onMergeEngineers?: (targetId: string, sourceId: string) => Promise<void>;
   onAssignPersonalTools?: (engineerId: string, toolsToAssign: ToolItem[]) => Promise<void>;
   onUnassignPersonalTool?: (loan: Loan) => Promise<void>;
+  onLinkUserAccount?: (engineerId: string, userUid: string) => Promise<void>;
 }
 
 export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
@@ -40,6 +43,8 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
   createdAt,
   lastLogin,
   userRole,
+  systemUserId,
+  systemUsers = [],
   isAdmin,
   engineers = [],
   loans = [],
@@ -48,13 +53,15 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
   onUpdateUserRole,
   onMergeEngineers,
   onAssignPersonalTools,
-  onUnassignPersonalTool
+  onUnassignPersonalTool,
+  onLinkUserAccount
 }) => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>(selectedEngineer.name);
   const [editDepartment, setEditDepartment] = useState<string>(selectedEngineer.department);
   const [editStatus, setEditStatus] = useState<'active' | 'inactive'>(selectedEngineer.status || 'active');
   const [editRole, setEditRole] = useState<UserRole>(userRole || 'ingeniero');
+  const [selectedUserUidToLink, setSelectedUserUidToLink] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
 
   // Modal de Fusión
@@ -89,8 +96,11 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
           status: editStatus
         });
       }
-      if (email && onUpdateUserRole && userRole !== editRole) {
-        await onUpdateUserRole(selectedEngineer.id, editRole);
+      if (systemUserId && onUpdateUserRole && userRole !== editRole) {
+        await onUpdateUserRole(systemUserId, editRole);
+      }
+      if (selectedUserUidToLink && onLinkUserAccount) {
+        await onLinkUserAccount(selectedEngineer.id, selectedUserUidToLink);
       }
       setIsEditing(false);
     } catch (e) {
@@ -184,7 +194,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                 {email ? (
                   <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Rol de Acceso al Sistema *
+                      Rol de Acceso ({email}) *
                     </label>
                     <select
                       className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none focus:border-blue-500 transition-all"
@@ -197,14 +207,31 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                     </select>
                   </div>
                 ) : (
-                  <div className="flex items-end pb-1">
-                    <span className="text-xs text-slate-500 italic">Técnico sin cuenta vinculada</span>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      Vincular a Cuenta de Usuario
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-semibold text-white outline-none focus:border-blue-500 transition-all"
+                      value={selectedUserUidToLink}
+                      onChange={e => setSelectedUserUidToLink(e.target.value)}
+                    >
+                      <option value="">Sin cuenta vinculada (Opcional)</option>
+                      {systemUsers.map(u => (
+                        <option key={u.uid} value={u.uid}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 
                 <div className="md:col-span-2 flex justify-end gap-2 mt-1">
                   <button 
-                    onClick={() => setIsEditing(false)} 
+                    onClick={() => {
+                      setSelectedUserUidToLink('');
+                      setIsEditing(false);
+                    }} 
                     disabled={saving}
                     className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-all border border-slate-700"
                   >
@@ -240,7 +267,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                   
                   {email ? (
                     <span className="text-blue-300 font-semibold bg-blue-500/10 px-2.5 py-0.5 rounded-lg text-xs border border-blue-500/10">
-                      {email} ({userRole === 'admin' ? 'Administrador' : userRole === 'bodeguero' ? 'Bodeguero' : 'Ingeniero'})
+                      🔑 {email} ({userRole === 'admin' ? 'Administrador' : userRole === 'bodeguero' ? 'Bodeguero' : 'Ingeniero'})
                     </span>
                   ) : (
                     <span className="text-slate-400 font-semibold bg-white/5 px-2.5 py-0.5 rounded-lg text-xs border border-white/5">
@@ -281,6 +308,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                     setEditDepartment(selectedEngineer.department);
                     setEditStatus(selectedEngineer.status || 'active');
                     setEditRole(userRole || 'ingeniero');
+                    setSelectedUserUidToLink('');
                     setIsEditing(true);
                   }} 
                   className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-all border border-white/10 hover:border-white/20 flex items-center gap-1.5 shadow-sm"
@@ -326,11 +354,14 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                   onChange={e => setMergeTargetId(e.target.value)}
                 >
                   <option value="">Selecciona el perfil definitivo...</option>
-                  {engineers.filter(e => e.id !== selectedEngineer.id).map(eng => (
-                    <option key={eng.id} value={eng.id}>
-                      {eng.name} ({eng.department}) {eng.id.length > 20 ? '· [Con cuenta]' : ''}
-                    </option>
-                  ))}
+                  {engineers.filter(e => e.id !== selectedEngineer.id).map(eng => {
+                    const uMatch = systemUsers.find(u => u.uid === eng.id);
+                    return (
+                      <option key={eng.id} value={eng.id}>
+                        {eng.name} ({eng.department}) {uMatch ? `· 🔑 [${uMatch.email}]` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <button 
