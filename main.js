@@ -1,35 +1,35 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 function createWindow() {
-  // Crear la ventana del navegador.
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     title: "BodegaControl - ORIMEC",
-    // Icono de la aplicación (debe estar en la carpeta public)
-    icon: path.join(__dirname, 'public/Logo-Orimec.png'), 
+    icon: path.join(__dirname, 'public/Logo-Orimec.png'),
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
     },
   });
 
-  // Ocultar la barra de menú por defecto (Archivo, Editar, etc.)
   mainWindow.setMenuBarVisibility(false);
 
-  // --- CARGA DE LA APLICACIÓN ---
-  
-  // MODO PRODUCCIÓN (IMPORTANTE: Usa esta línea para crear el .exe)
-  // Esta línea busca los archivos en la carpeta 'dist' que crea el comando build
+  // Los enlaces externos se abren en el navegador del sistema, nunca dentro de la app
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // MODO PRODUCCIÓN: carga los archivos compilados en 'dist'
   mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
 
-  // MODO DESARROLLO (Solo si quieres probar con 'npm run dev' en paralelo)
-  // Si usas esta, comenta la línea de arriba con //
+  // MODO DESARROLLO: comenta la línea de arriba y descomenta esta para usar 'npm run dev'
   // mainWindow.loadURL('http://localhost:5173');
 }
 
-// Inicialización de Electron
 app.whenReady().then(() => {
   createWindow();
 
@@ -38,7 +38,14 @@ app.whenReady().then(() => {
   });
 });
 
-// Cerrar la aplicación cuando todas las ventanas se cierran
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('web-contents-created', (_event, contents) => {
+  contents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file://')) {
+      event.preventDefault();
+    }
+  });
 });

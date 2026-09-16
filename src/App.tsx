@@ -96,23 +96,23 @@ export const normalizeText = (str: string = '') => {
 };
 
 export const findSystemUserForEngineer = (
-  eng: Engineer | null | undefined, 
+  eng: Engineer | null | undefined,
   usersList: UserItem[] = []
 ): UserItem | undefined => {
   if (!eng) return undefined;
-  
-  // 1. Direct UID match
+
+  // 1. Coincidencia directa por UID
   const byUid = usersList.find(u => u.uid === eng.id);
   if (byUid) return byUid;
 
   const normEng = normalizeText(eng.name);
   if (!normEng) return undefined;
 
-  // 2. Exact normalized name match
+  // 2. Coincidencia exacta de nombre normalizado
   const byExactName = usersList.find(u => normalizeText(u.name) === normEng);
   if (byExactName) return byExactName;
 
-  // 3. Partial / contains name match (e.g. "FRANCISCO SOTOMAYOR" matches "Francisco" or vice versa)
+  // 3. Coincidencia parcial (ej. "FRANCISCO SOTOMAYOR" coincide con "Francisco")
   const byPartialName = usersList.find(u => {
     const normUser = normalizeText(u.name);
     if (!normUser) return false;
@@ -122,6 +122,10 @@ export const findSystemUserForEngineer = (
 
   return undefined;
 };
+
+// Única cuenta que se auto-asigna el rol de administrador al iniciar sesión;
+// el resto de administradores se promueven manualmente desde Personal Técnico.
+const BOOTSTRAP_ADMIN_EMAIL = import.meta.env.VITE_BOOTSTRAP_ADMIN_EMAIL || '';
 
 function BodegaContent() {
   const [user, setUser] = useState<any>(null);
@@ -289,7 +293,7 @@ function BodegaContent() {
             const data = docSnap.data();
             let finalRole = data.role as UserRole;
             let finalName = data.name || 'Usuario';
-            if (currentUserRes.email === 'alexis.guerra@orimec.com.ec' && finalRole !== 'admin') {
+            if (currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL && finalRole !== 'admin') {
               finalRole = 'admin';
               await updateDoc(userDocRef, { role: 'admin', lastLogin: new Date().toISOString() });
             } else {
@@ -303,8 +307,8 @@ function BodegaContent() {
               setActiveTab('dashboard');
             }
           } else {
-            // Document doesn't exist, create fallback
-            const fallbackRole: UserRole = currentUserRes.email === 'alexis.guerra@orimec.com.ec' ? 'admin' : 'bodeguero';
+            // No existe el documento de perfil: se crea uno de respaldo
+            const fallbackRole: UserRole = currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'bodeguero';
             const fallbackName = currentUserRes.email?.split('@')[0] || 'Usuario';
             await setDoc(userDocRef, {
               uid: currentUserRes.uid,
@@ -324,9 +328,9 @@ function BodegaContent() {
           }
           setUser(currentUserRes);
         } catch (err) {
-          console.error("Error loading user profile:", err);
-          // Set user anyway so data loads, fallback name/role
-          const fallbackRole: UserRole = currentUserRes.email === 'alexis.guerra@orimec.com.ec' ? 'admin' : 'bodeguero';
+          console.error("Error al cargar el perfil del usuario:", err);
+          // Se mantiene la sesión con datos de respaldo para no bloquear la carga
+          const fallbackRole: UserRole = currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'bodeguero';
           const fallbackName = currentUserRes.email?.split('@')[0] || 'Usuario';
           setCurrentUser(fallbackName);
           setAppUser({ name: fallbackName, role: fallbackRole });
@@ -418,7 +422,7 @@ function BodegaContent() {
     for (const norm in groups) {
       const engs = groups[norm];
       if (engs.length > 1) {
-        // Prioritize preserving the ID that exists in systemUsers (Auth UID)
+        // Se conserva el ID que ya está vinculado a una cuenta de acceso (Auth UID)
         engs.sort((a, b) => {
           const aIsUser = systemUsers.some(u => u.uid === a.id);
           const bIsUser = systemUsers.some(u => u.uid === b.id);
@@ -429,32 +433,30 @@ function BodegaContent() {
         const keep = engs[0];
         const duplicatesToRemove = engs.slice(1);
 
-        console.log(`Deduplicating "${keep.name}": keeping ID ${keep.id}, removing:`, duplicatesToRemove.map(d => d.id));
-
         const batch = writeBatch(db);
-        
+
         for (const dupe of duplicatesToRemove) {
           batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', dupe.id));
 
-          // Migrate loans
+          // Reasignar préstamos
           const matchedLoans = loans.filter(l => l.engineerId === dupe.id);
           matchedLoans.forEach(l => {
             batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: keep.id });
           });
 
-          // Migrate consumables
+          // Reasignar consumibles
           const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === dupe.id);
           matchedConsumables.forEach(cl => {
-            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { 
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), {
               engineerId: keep.id,
               engineerName: keep.name
             });
           });
 
-          // Migrate requests
+          // Reasignar solicitudes
           const matchedRequests = loanRequests.filter(r => r.engineerUid === dupe.id);
           matchedRequests.forEach(r => {
-            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { 
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), {
               engineerUid: keep.id,
               engineerName: keep.name
             });
@@ -477,13 +479,12 @@ function BodegaContent() {
 
     const reconcileEngineersWithUsers = async () => {
       for (const eng of engineers) {
-        // If this engineer's ID is already a system user UID, skip
+        // Si el ID ya corresponde a una cuenta de acceso, se omite
         if (systemUsers.some(u => u.uid === eng.id)) continue;
 
-        // Check if there is a matching system user by name or partial name
+        // Se busca una cuenta de acceso que coincida por nombre completo o parcial
         const matchedUser = findSystemUserForEngineer(eng, systemUsers);
         if (matchedUser && !engineers.some(e => e.id === matchedUser.uid)) {
-          console.log(`Reconciling manual engineer "${eng.name}" (${eng.id}) -> Auth UID (${matchedUser.uid})`);
           try {
             const batch = writeBatch(db);
             const finalName = eng.name.trim().length >= matchedUser.name.trim().length ? eng.name.trim() : matchedUser.name.trim();
@@ -643,17 +644,19 @@ function BodegaContent() {
       setAuthError('Por favor complete todos los campos.');
       return;
     }
-    if (signupPassword.length < 6) {
-      setAuthError('La contraseña debe tener al menos 6 caracteres.');
+    if (signupPassword.length < 8) {
+      setAuthError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
     setAuthError('');
     setAuthSubmitting(true);
     try {
       const res = await createUserWithEmailAndPassword(auth, signupEmail.trim(), signupPassword);
-      // Guardar el perfil en la colección users
+      // El rol de administrador nunca se auto-asigna desde el registro público;
+      // solo se obtiene mediante la cuenta de arranque o la promoción de otro admin.
       const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', res.user.uid);
-      const finalRole = signupEmail.trim() === 'alexis.guerra@orimec.com.ec' ? 'admin' : signupRole;
+      const requestedRole: UserRole = signupRole === 'admin' ? 'bodeguero' : signupRole;
+      const finalRole = signupEmail.trim() === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : requestedRole;
       await setDoc(userDocRef, {
         uid: res.user.uid,
         name: signupName.trim(),
@@ -730,7 +733,7 @@ function BodegaContent() {
       } else if (err.code === 'auth/invalid-email') {
         errorMsg = 'El formato del correo electrónico no es válido.';
       } else if (err.code === 'auth/weak-password') {
-        errorMsg = 'La contraseña es muy débil (mínimo 6 caracteres).';
+        errorMsg = 'La contraseña es muy débil (mínimo 8 caracteres).';
       }
       setAuthError(errorMsg);
       addToast(errorMsg, 'error');
@@ -969,7 +972,6 @@ function BodegaContent() {
   const handleApproveRequest = async (req: LoanRequest) => {
     if (!user || !appUser) return;
     try {
-      // 1. Create a loan document
       const loanData = {
         tools: req.tools,
         engineerId: req.engineerUid,
@@ -985,15 +987,12 @@ function BodegaContent() {
 
       const batch = writeBatch(db);
       
-      // Set the loan document
       batch.set(loanDocRef, loanData);
 
-      // Update tools status to 'in-use'
       req.tools.forEach(tool => {
         batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', tool.id), { status: 'in-use' });
       });
 
-      // Update the request status
       batch.update(requestDocRef, {
         status: 'approved',
         resolvedBy: appUser.name,
@@ -1177,7 +1176,7 @@ function BodegaContent() {
     try {
       const batch = writeBatch(db);
 
-      // Prioritize preserving the ID that corresponds to a real Firebase Auth account in systemUsers
+      // Se conserva el ID que corresponde a una cuenta de acceso real (systemUsers)
       const targetIsUser = systemUsers.some(u => u.uid === targetId);
       const sourceIsUser = systemUsers.some(u => u.uid === sourceId);
 
@@ -1185,7 +1184,6 @@ function BodegaContent() {
       let removeId = sourceId;
 
       if (!targetIsUser && sourceIsUser) {
-        // Source is the real Auth account! Use sourceId as masterId
         masterId = sourceId;
         removeId = targetId;
       } else if (!targetIsUser && !sourceIsUser) {
@@ -1198,7 +1196,6 @@ function BodegaContent() {
         }
       }
 
-      // Determine best full name (longer name)
       let finalName = targetEng.name.trim();
       if (sourceEng.name.trim().length > finalName.length) {
         finalName = sourceEng.name.trim();
@@ -1208,7 +1205,6 @@ function BodegaContent() {
       const finalStatus = targetEng.status === 'inactive' && sourceEng.status === 'inactive' ? 'inactive' : 'active';
       const finalCreatedAt = targetEng.createdAt || sourceEng.createdAt || new Date().toISOString();
 
-      // 1. Set master engineer doc
       batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', masterId), {
         id: masterId,
         name: finalName,
@@ -1217,7 +1213,6 @@ function BodegaContent() {
         createdAt: finalCreatedAt
       }, { merge: true });
 
-      // 2. Delete duplicate engineer doc if different from master
       if (removeId !== masterId) {
         batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', removeId));
       }
@@ -1228,22 +1223,19 @@ function BodegaContent() {
         batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', sourceId));
       }
 
-      // 3. Migrate loans
       const matchedLoans = loans.filter(l => (l.engineerId === targetId || l.engineerId === sourceId) && l.engineerId !== masterId);
       matchedLoans.forEach(l => {
         batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: masterId });
       });
 
-      // 4. Migrate consumables
       const matchedConsumables = consumableLogs.filter(cl => (cl.engineerId === targetId || cl.engineerId === sourceId) && cl.engineerId !== masterId);
       matchedConsumables.forEach(cl => {
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { 
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), {
           engineerId: masterId,
           engineerName: finalName
         });
       });
 
-      // 5. Migrate requests
       const matchedRequests = loanRequests.filter(r => (r.engineerUid === targetId || r.engineerUid === sourceId) && r.engineerUid !== masterId);
       matchedRequests.forEach(r => {
         batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { 
@@ -1709,11 +1701,11 @@ function BodegaContent() {
                 </div>
               </div>
 
-              {signupEmail.trim() !== 'alexis.guerra@orimec.com.ec' && (
+              {signupEmail.trim() !== BOOTSTRAP_ADMIN_EMAIL && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Rol Solicitado</label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {([['admin', 'Administrador', 'Acceso total'], ['bodeguero', 'Bodeguero', 'Préstamos'], ['ingeniero', 'Ingeniero', 'Solicitudes']] as const).map(([role, label, desc]) => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {([['bodeguero', 'Bodeguero', 'Préstamos'], ['ingeniero', 'Ingeniero', 'Solicitudes']] as const).map(([role, label, desc]) => (
                       <button 
                         key={role} 
                         type="button" 
@@ -1728,10 +1720,13 @@ function BodegaContent() {
                       </button>
                     ))}
                   </div>
+                  <p className="text-[10px] text-slate-400 mt-2">
+                    El acceso de Administrador solo puede otorgarlo otro administrador desde Personal Técnico.
+                  </p>
                 </div>
               )}
 
-              {signupEmail.trim() === 'alexis.guerra@orimec.com.ec' && (
+              {signupEmail.trim() === BOOTSTRAP_ADMIN_EMAIL && (
                 <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs font-medium animate-in fade-in duration-300">
                   Este correo tiene asignado el rol de <strong>Administrador</strong> por defecto.
                 </div>

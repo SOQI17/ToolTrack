@@ -1,0 +1,117 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /artifacts/{appId}/public/data {
+
+      // Debe coincidir con VITE_BOOTSTRAP_ADMIN_EMAIL en el .env de la app.
+      // Es la única cuenta que puede auto-asignarse el rol de administrador;
+      // el resto de promociones las hace un admin ya existente.
+      function correoDeArranque() {
+        return 'alexis.guerra@orimec.com.ec';
+      }
+
+      function estaAutenticado() {
+        return request.auth != null;
+      }
+
+      function esCuentaDeArranque() {
+        return estaAutenticado() && request.auth.token.email == correoDeArranque();
+      }
+
+      function datosUsuario(uid) {
+        return get(/databases/$(database)/documents/artifacts/$(appId)/public/data/users/$(uid)).data;
+      }
+
+      function rolDe(uid) {
+        return datosUsuario(uid).role;
+      }
+
+      function esAdmin() {
+        return estaAutenticado() && rolDe(request.auth.uid) == 'admin';
+      }
+
+      function esStaff() {
+        // Bodeguero y admin operan la bodega; ingeniero solo consulta y solicita.
+        return estaAutenticado() && rolDe(request.auth.uid) in ['admin', 'bodeguero'];
+      }
+
+      // --- Usuarios del sistema (cuentas de acceso) ---
+      match /users/{uid} {
+        allow read: if estaAutenticado();
+
+        // Un usuario crea su propio perfil al registrarse. El rol de administrador
+        // solo puede auto-asignarse la cuenta de arranque; nadie más lo elige.
+        allow create: if estaAutenticado()
+          && request.auth.uid == uid
+          && request.resource.data.uid == uid
+          && (
+            request.resource.data.role in ['bodeguero', 'ingeniero'] ||
+            (request.resource.data.role == 'admin' && esCuentaDeArranque())
+          );
+
+        // Un usuario puede actualizar su propio perfil sin tocar su rol,
+        // salvo la cuenta de arranque, que puede auto-promoverse a admin.
+        allow update: if estaAutenticado()
+          && request.auth.uid == uid
+          && (
+            request.resource.data.role == resource.data.role ||
+            (request.resource.data.role == 'admin' && esCuentaDeArranque())
+          );
+
+        // Solo un administrador existente puede cambiar el rol de cualquier usuario
+        // (incluyendo a otros) o eliminar cuentas.
+        allow update, delete: if esAdmin();
+      }
+
+      // --- Personal técnico (ingenieros) ---
+      match /engineers/{engineerId} {
+        allow read: if estaAutenticado();
+        allow write: if esStaff();
+      }
+
+      // --- Inventario de herramientas / activos ---
+      match /tools/{toolId} {
+        allow read: if estaAutenticado();
+        allow write: if esStaff();
+      }
+
+      // --- Consumibles ---
+      match /consumables/{itemId} {
+        allow read: if estaAutenticado();
+        allow write: if esStaff();
+      }
+
+      match /consumable_logs/{logId} {
+        allow read: if estaAutenticado();
+        allow write: if esStaff();
+      }
+
+      // --- Préstamos activos/cerrados ---
+      match /loans/{loanId} {
+        allow read: if estaAutenticado();
+        allow write: if esStaff();
+      }
+
+      // --- Solicitudes de préstamo ---
+      match /loan_requests/{requestId} {
+        allow read: if estaAutenticado();
+
+        // Un ingeniero solo puede crear solicitudes a su propio nombre.
+        allow create: if estaAutenticado() && (
+          esStaff() ||
+          (rolDe(request.auth.uid) == 'ingeniero' && request.resource.data.engineerUid == request.auth.uid)
+        );
+
+        // Aprobar/rechazar es tarea de bodega; el propio ingeniero solo puede
+        // modificar/cancelar mientras su solicitud siga pendiente.
+        allow update, delete: if esStaff() || (
+          estaAutenticado()
+          && resource.data.engineerUid == request.auth.uid
+          && resource.data.status == 'pending'
+        );
+      }
+    }
+  }
+}

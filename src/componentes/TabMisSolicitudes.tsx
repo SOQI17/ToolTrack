@@ -13,7 +13,6 @@ export const TabMisSolicitudes: React.FC<TabMisSolicitudesProps> = ({
 }) => {
   const [filter, setFilter] = useState<'ALL' | 'pending' | 'resolved'>('ALL');
 
-  // Filter requests belonging to this engineer
   const myRequests = loanRequests.filter(r => r.engineerUid === currentUserUid);
 
   const filteredRequests = myRequests.filter(r => {

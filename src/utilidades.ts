@@ -112,7 +112,6 @@ export const handleImportCSV = (
 
     const rawHeaders = parseCSVLine(lines[0]);
     const headers = rawHeaders.map(normalizeHeader);
-    console.log('[Import] Header en línea', headerLineIndex, '| Headers:', headers.join(' | '));
 
     // Mapeo de estados ORIMEC → ToolStatus
     const mapStatus = (v: string): ToolStatus => {
@@ -297,14 +296,14 @@ export const generateQRUrl = (tool: ToolItem) => {
 
 export const getNextInternalTag = (tools: ToolItem[]): string => {
   let maxNum = 0;
-  let paddingLength = 4; // Default to 4 digits (e.g. ORI-0001)
+  let paddingLength = 4; // Por defecto, 4 dígitos (ej. ORI-0001)
 
   if (tools && tools.length > 0) {
     tools.forEach(t => {
       const tag = (t.orimec || '').trim();
       if (!tag) return;
 
-      // Match ORI- followed by digits (case-insensitive)
+      // Coincide con ORI- seguido de dígitos (sin distinguir mayúsculas)
       const match = tag.match(/^ORI-(\d+)$/i);
       if (match) {
         const digitsStr = match[1];
