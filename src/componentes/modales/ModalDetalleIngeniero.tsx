@@ -178,7 +178,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
       className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in" 
       style={{ zoom: 1 / appZoom } as React.CSSProperties}
     >
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[88vh] flex flex-col overflow-hidden border border-slate-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden border border-slate-200">
         
         {/* Cabecera / Expediente */}
         <div className="p-7 border-b flex justify-between items-start bg-slate-900 text-white relative overflow-hidden shrink-0">
@@ -451,7 +451,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
           {/* TAB 1: HISTORIAL DE EQUIPOS (REGULARES) */}
           {engineerModalTab === 'loans' && (
             <div className="overflow-auto custom-scrollbar flex-1 p-6 md:p-8">
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left text-sm relative table-auto">
                   <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_#e2e8f0] text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <tr>
@@ -611,21 +611,21 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
               )}
 
               {/* Lista de Herramientas Asignadas */}
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm relative table-auto">
+              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-sm relative">
                   <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_#e2e8f0] text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <tr>
-                      <th className="px-6 py-3 bg-transparent whitespace-nowrap">Herramienta Asignada</th>
-                      <th className="px-6 py-3 bg-transparent whitespace-nowrap">Categoría / Tag</th>
-                      <th className="px-6 py-3 bg-transparent whitespace-nowrap">Fecha de Asignación</th>
-                      <th className="px-6 py-3 text-center bg-transparent whitespace-nowrap">Estado</th>
-                      <th className="px-6 py-3 text-right bg-transparent whitespace-nowrap">Acción</th>
+                      <th className="px-5 py-3.5 bg-transparent whitespace-nowrap min-w-[220px]">Herramienta Asignada</th>
+                      <th className="px-4 py-3.5 bg-transparent whitespace-nowrap">Categoría / Tag</th>
+                      <th className="px-4 py-3.5 bg-transparent whitespace-nowrap">Fecha de Asignación</th>
+                      <th className="px-4 py-3.5 text-center bg-transparent whitespace-nowrap">Estado</th>
+                      <th className="px-5 py-3.5 text-right pr-6 bg-transparent whitespace-nowrap min-w-[130px]">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dm-divide">
                     {assignedToolsList.map(item => (
                       <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-3 min-w-[200px] whitespace-normal">
+                        <td className="px-5 py-3.5 min-w-[220px] whitespace-normal">
                           <div className="font-bold text-slate-800 text-[13px] leading-tight">
                             {item.name}
                           </div>
@@ -633,7 +633,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                             SN: {item.serial}
                           </div>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="px-4 py-3.5 whitespace-nowrap">
                           <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
                             {item.category || 'General'}
                           </span>
@@ -643,7 +643,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap">
+                        <td className="px-4 py-3.5 whitespace-nowrap">
                           <div className="font-mono text-slate-900 text-xs font-semibold">
                             {new Date(item.dateOut).toLocaleDateString()}
                           </div>
@@ -651,19 +651,19 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                             Asignación Permanente
                           </div>
                         </td>
-                        <td className="px-6 py-3 text-center whitespace-nowrap">
+                        <td className="px-4 py-3.5 text-center whitespace-nowrap">
                           <span className="inline-flex items-center gap-1 text-purple-700 bg-purple-50 border border-purple-200/60 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
                             <ShieldCheck size={12}/> Personal
                           </span>
                         </td>
-                        <td className="px-6 py-3 text-right whitespace-nowrap">
+                        <td className="px-5 py-3.5 text-right pr-6 whitespace-nowrap min-w-[130px]">
                           {isAdmin && onUnassignPersonalTool && (
                             <button 
                               onClick={() => onUnassignPersonalTool(item.loan, item.toolId)}
-                              className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-red-600 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 px-3 py-1.5 rounded-xl transition-all shadow-sm"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-red-700 bg-slate-100 hover:bg-red-50 border border-slate-200 hover:border-red-300 px-3.5 py-1.5 rounded-xl transition-all shadow-sm"
                               title="Devolver herramienta a bodega"
                             >
-                              <CornerDownLeft size={12}/> Devolver
+                              <CornerDownLeft size={13}/> Devolver
                             </button>
                           )}
                         </td>
@@ -685,7 +685,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
           {/* TAB 3: MATERIAL ENTREGADO (CONSUMIBLES) */}
           {engineerModalTab === 'consumables' && (
             <div className="overflow-auto custom-scrollbar flex-1 p-6 md:p-8">
-              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-x-auto custom-scrollbar">
                 <table className="w-full text-left text-sm relative table-auto">
                   <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_#e2e8f0] text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <tr>
