@@ -1356,20 +1356,34 @@ function BodegaContent() {
     }
   };
 
-  const handleUnassignPersonalTool = async (loan: Loan) => {
+  const handleUnassignPersonalTool = async (loan: Loan, toolIdToUnassign?: string) => {
     if (!loan) return;
     try {
       const batch = writeBatch(db);
-      batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', loan.id), {
-        dateIn: new Date().toISOString(),
-        returnCondition: 'Buena',
-        returnReceivedBy: currentUser || 'Bodega',
-        returnNotes: 'Devolución de asignación personal'
-      });
-      const toolsToFree = loan.tools && loan.tools.length > 0 ? loan.tools : (loan.toolId ? [{ id: loan.toolId, name: '', serial: '' }] : []);
-      toolsToFree.forEach(t => {
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', t.id), { status: 'available' });
-      });
+
+      if (toolIdToUnassign && loan.tools && loan.tools.length > 1) {
+        // Desasignar solo la herramienta específica
+        const updatedTools = loan.tools.filter(t => t.id !== toolIdToUnassign);
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', loan.id), {
+          tools: updatedTools
+        });
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', toolIdToUnassign), { 
+          status: 'available' 
+        });
+      } else {
+        // Desasignar todo el préstamo o última herramienta restante
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', loan.id), {
+          dateIn: new Date().toISOString(),
+          returnCondition: 'Buena',
+          returnReceivedBy: currentUser || 'Bodega',
+          returnNotes: 'Devolución de asignación personal'
+        });
+        const toolsToFree = loan.tools && loan.tools.length > 0 ? loan.tools : (loan.toolId ? [{ id: loan.toolId, name: '', serial: '' }] : []);
+        toolsToFree.forEach(t => {
+          batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', t.id), { status: 'available' });
+        });
+      }
+
       await batch.commit();
       addToast('Herramienta devuelta y desasignada con éxito.', 'success');
     } catch (e: any) {

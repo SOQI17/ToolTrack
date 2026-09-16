@@ -27,7 +27,7 @@ interface ModalDetalleIngenieroProps {
   onUpdateUserRole?: (uid: string, role: UserRole) => Promise<void>;
   onMergeEngineers?: (targetId: string, sourceId: string) => Promise<void>;
   onAssignPersonalTools?: (engineerId: string, toolsToAssign: ToolItem[]) => Promise<void>;
-  onUnassignPersonalTool?: (loan: Loan) => Promise<void>;
+  onUnassignPersonalTool?: (loan: Loan, toolIdToUnassign?: string) => Promise<void>;
   onLinkUserAccount?: (engineerId: string, userUid: string) => Promise<void>;
 }
 
@@ -77,6 +77,48 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
   const allEngineerLoans = getEngineerLoans(selectedEngineer.id);
   const regularLoans = allEngineerLoans.filter(l => !l.isAssignment && l.purpose !== 'Asignación Personal');
   const assignedLoans = allEngineerLoans.filter(l => (l.isAssignment || l.purpose === 'Asignación Personal') && !l.dateIn);
+
+  // Desglose individual de cada herramienta asignada
+  const assignedToolsList: {
+    id: string;
+    loan: Loan;
+    toolId: string;
+    name: string;
+    serial: string;
+    category?: string;
+    orimec?: string;
+    dateOut: string;
+  }[] = [];
+
+  assignedLoans.forEach(l => {
+    if (l.tools && l.tools.length > 0) {
+      l.tools.forEach((t, idx) => {
+        const fullTool = tools.find(item => item.id === t.id);
+        assignedToolsList.push({
+          id: `${l.id}_${t.id || idx}`,
+          loan: l,
+          toolId: t.id,
+          name: t.name || fullTool?.name || 'Herramienta',
+          serial: t.serial || fullTool?.serial || '—',
+          category: fullTool?.category,
+          orimec: fullTool?.orimec,
+          dateOut: l.dateOut
+        });
+      });
+    } else if (l.toolId) {
+      const fullTool = tools.find(item => item.id === l.toolId);
+      assignedToolsList.push({
+        id: `${l.id}_${l.toolId}`,
+        loan: l,
+        toolId: l.toolId,
+        name: fullTool?.name || 'Herramienta',
+        serial: fullTool?.serial || '—',
+        category: fullTool?.category,
+        orimec: fullTool?.orimec,
+        dateOut: l.dateOut
+      });
+    }
+  });
 
   const availableTools = tools.filter(t => t.status === 'available');
   const filteredAvailableTools = availableTools.filter(t => {
@@ -391,7 +433,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
               engineerModalTab === 'assigned' ? 'border-purple-600 text-purple-700' : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <ShieldCheck size={14}/> HERRAMIENTAS ASIGNADAS ({assignedLoans.length})
+            <ShieldCheck size={14}/> HERRAMIENTAS ASIGNADAS ({assignedToolsList.length})
           </button>
           <button 
             onClick={() => setEngineerModalTab('consumables')} 
@@ -574,27 +616,36 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                   <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-md shadow-[0_1px_0_0_#e2e8f0] text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                     <tr>
                       <th className="px-6 py-3 bg-transparent whitespace-nowrap">Herramienta Asignada</th>
+                      <th className="px-6 py-3 bg-transparent whitespace-nowrap">Categoría / Tag</th>
                       <th className="px-6 py-3 bg-transparent whitespace-nowrap">Fecha de Asignación</th>
                       <th className="px-6 py-3 text-center bg-transparent whitespace-nowrap">Estado</th>
                       <th className="px-6 py-3 text-right bg-transparent whitespace-nowrap">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dm-divide">
-                    {assignedLoans.map(l => (
-                      <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
+                    {assignedToolsList.map(item => (
+                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-3 min-w-[200px] whitespace-normal">
                           <div className="font-bold text-slate-800 text-[13px] leading-tight">
-                            {l.tools ? l.tools.map(t => t.name).join(', ') : 'Herramienta'}
+                            {item.name}
                           </div>
-                          {l.tools && l.tools[0]?.serial && (
-                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                              SN: {l.tools.map(t => t.serial).join(', ')}
-                            </div>
+                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                            SN: {item.serial}
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap">
+                          <span className="text-xs text-slate-600 font-semibold bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                            {item.category || 'General'}
+                          </span>
+                          {item.orimec && (
+                            <span className="text-[10px] text-blue-600 font-mono font-bold bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md ml-1.5">
+                              Tag: {item.orimec}
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap">
                           <div className="font-mono text-slate-900 text-xs font-semibold">
-                            {new Date(l.dateOut).toLocaleDateString()}
+                            {new Date(item.dateOut).toLocaleDateString()}
                           </div>
                           <div className="text-[10px] text-slate-400 font-mono">
                             Asignación Permanente
@@ -608,7 +659,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                         <td className="px-6 py-3 text-right whitespace-nowrap">
                           {isAdmin && onUnassignPersonalTool && (
                             <button 
-                              onClick={() => onUnassignPersonalTool(l)}
+                              onClick={() => onUnassignPersonalTool(item.loan, item.toolId)}
                               className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 hover:text-red-600 bg-slate-50 hover:bg-red-50 border border-slate-200 hover:border-red-200 px-3 py-1.5 rounded-xl transition-all shadow-sm"
                               title="Devolver herramienta a bodega"
                             >
@@ -618,9 +669,9 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
                         </td>
                       </tr>
                     ))}
-                    {assignedLoans.length === 0 && (
+                    {assignedToolsList.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-12 text-center text-slate-400 font-medium bg-slate-50/50">
+                        <td colSpan={5} className="py-12 text-center text-slate-400 font-medium bg-slate-50/50">
                           {selectedEngineer.name} no tiene herramientas personales asignadas.
                         </td>
                       </tr>
