@@ -97,6 +97,7 @@ export interface Loan {
   returnNotes?: string;
   returnReceivedBy?: string;
   partialReturns?: PartialReturn[];
+  isAssignment?: boolean;
 }
 
 export interface ConsumableLog {

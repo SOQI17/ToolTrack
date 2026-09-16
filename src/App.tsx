@@ -145,7 +145,7 @@ function BodegaContent() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
 
   // Filtros y estados del Préstamo
-  const [loanFilter, setLoanFilter] = useState<'ALL' | 'active' | 'returned'>('ALL');
+  const [loanFilter, setLoanFilter] = useState<'ALL' | 'active' | 'returned' | 'assigned'>('ALL');
   const [loanConfirmStep, setLoanConfirmStep] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [returnLoan, setReturnLoan] = useState<Loan | null>(null);
@@ -354,7 +354,7 @@ function BodegaContent() {
       }
     });
     loans.forEach(l => {
-      if (!l.dateIn && Math.ceil((today.getTime() - new Date(l.dateOut).getTime()) / 86400000) > 7) {
+      if (!l.dateIn && !l.isAssignment && l.purpose !== 'Asignación Personal' && Math.ceil((today.getTime() - new Date(l.dateOut).getTime()) / 86400000) > 7) {
         const toolNames = l.tools ? l.tools.map(t => t.name).join(', ') : (l.toolId ? getToolName(l.toolId) : 'Varias');
         newAlerts.push({ message: `Préstamo vencido: ${toolNames}`, type: 'loan', loanId: l.id });
       }
@@ -1062,6 +1062,113 @@ function BodegaContent() {
     }
     if (window.confirm('¿Confirmas la eliminación?')) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', id));
+    }
+  };
+
+  const handleMergeEngineers = async (targetId: string, sourceId: string) => {
+    if (!targetId || !sourceId || targetId === sourceId) return;
+    const targetEng = engineers.find(e => e.id === targetId);
+    const sourceEng = engineers.find(e => e.id === sourceId);
+    if (!targetEng || !sourceEng) return;
+
+    if (!window.confirm(`¿Confirmas la fusión de "${sourceEng.name}" dentro de "${targetEng.name}"? Todos los préstamos, herramientas asignadas, consumibles y solicitudes se transferirán a "${targetEng.name}".`)) {
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Migrate loans
+      const matchedLoans = loans.filter(l => l.engineerId === sourceId);
+      matchedLoans.forEach(l => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id), { engineerId: targetId });
+      });
+
+      // 2. Migrate consumables
+      const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === sourceId);
+      matchedConsumables.forEach(cl => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id), { engineerId: targetId });
+      });
+
+      // 3. Migrate loan requests
+      const matchedRequests = loanRequests.filter(r => r.engineerUid === sourceId);
+      matchedRequests.forEach(r => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id), { engineerUid: targetId });
+      });
+
+      // 4. Preserve longer full name if source had it
+      let finalName = targetEng.name;
+      if (sourceEng.name.trim().length > targetEng.name.trim().length) {
+        finalName = sourceEng.name.trim();
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', targetId), { name: finalName });
+      }
+
+      // 5. Delete source duplicate engineer
+      batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'engineers', sourceId));
+
+      await batch.commit();
+
+      if (selectedEngineer?.id === sourceId) {
+        setSelectedEngineer({ ...targetEng, name: finalName });
+      } else if (selectedEngineer?.id === targetId) {
+        setSelectedEngineer({ ...targetEng, name: finalName });
+      }
+
+      addToast(`Perfiles fusionados exitosamente en "${finalName}".`, 'success');
+    } catch (e: any) {
+      addToast(`Error al fusionar perfiles: ${e.message}`, 'error');
+    }
+  };
+
+  const handleAssignPersonalTools = async (engineerId: string, toolsToAssign: ToolItem[]) => {
+    if (!user || toolsToAssign.length === 0 || !engineerId) return;
+    const eng = engineers.find(e => e.id === engineerId);
+    const engName = eng ? eng.name : 'Personal Técnico';
+
+    const loanData = {
+      engineerId,
+      tools: toolsToAssign.map(t => ({ id: t.id, name: t.name, serial: t.serial })),
+      dateOut: new Date().toISOString(),
+      dateIn: null,
+      purpose: 'Asignación Personal',
+      client: 'Asignación',
+      project: 'Personal',
+      destination: 'Custodia Permanente',
+      isAssignment: true
+    };
+
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'), loanData);
+      const batch = writeBatch(db);
+      toolsToAssign.forEach(t => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', t.id), { status: 'in-use' });
+      });
+      await batch.commit();
+
+      addToast(`Se asignaron ${toolsToAssign.length} herramienta(s) a ${engName}.`, 'success');
+    } catch (e: any) {
+      addToast(`Error al asignar herramientas: ${e.message}`, 'error');
+    }
+  };
+
+  const handleUnassignPersonalTool = async (loan: Loan) => {
+    if (!loan) return;
+    try {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'loans', loan.id), {
+        dateIn: new Date().toISOString(),
+        returnCondition: 'Buena',
+        returnReceivedBy: currentUser || 'Bodega',
+        returnNotes: 'Devolución de asignación personal'
+      });
+      const toolsToFree = loan.tools && loan.tools.length > 0 ? loan.tools : (loan.toolId ? [{ id: loan.toolId, name: '', serial: '' }] : []);
+      toolsToFree.forEach(t => {
+        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', t.id), { status: 'available' });
+      });
+      await batch.commit();
+      addToast('Herramienta devuelta y desasignada con éxito.', 'success');
+    } catch (e: any) {
+      addToast(`Error al desasignar herramienta: ${e.message}`, 'error');
     }
   };
 
@@ -1815,8 +1922,14 @@ function BodegaContent() {
               lastLogin={systemUsers.find(u => u.uid === selectedEngineer.id)?.lastLogin}
               userRole={systemUsers.find(u => u.uid === selectedEngineer.id)?.role}
               isAdmin={appUser?.role === 'admin'}
+              engineers={engineers}
+              loans={loans}
+              tools={tools}
               onUpdateEngineer={handleUpdateEngineer}
               onUpdateUserRole={handleUpdateUserRole}
+              onMergeEngineers={handleMergeEngineers}
+              onAssignPersonalTools={handleAssignPersonalTools}
+              onUnassignPersonalTool={handleUnassignPersonalTool}
             />
           )}
 

@@ -8,8 +8,8 @@ interface TabPrestamosProps {
   loans: Loan[];
   engineers: Engineer[];
   tools: ToolItem[];
-  loanFilter: 'ALL' | 'active' | 'returned';
-  setLoanFilter: (val: 'ALL' | 'active' | 'returned') => void;
+  loanFilter: 'ALL' | 'active' | 'returned' | 'assigned';
+  setLoanFilter: (val: 'ALL' | 'active' | 'returned' | 'assigned') => void;
   loanSearch: string;
   setLoanSearch: (val: string) => void;
   loanDateFrom: string;
@@ -45,8 +45,9 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
 }) => {
   const filteredLoans = loans.filter(l => {
     const q = loanSearch.toLowerCase().trim();
-    if (loanFilter === 'active' && l.dateIn) return false;
+    if (loanFilter === 'active' && (l.dateIn || l.isAssignment)) return false;
     if (loanFilter === 'returned' && !l.dateIn) return false;
+    if (loanFilter === 'assigned' && (l.dateIn || !l.isAssignment)) return false;
     
     if (q) {
       const eng = getEngineerName(l.engineerId).toLowerCase();
@@ -93,7 +94,7 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap max-w-full">
           {/* Tabs estado */}
           <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar max-w-full py-0.5">
-            {(['ALL', 'active', 'returned'] as const).map(f => (
+            {(['ALL', 'active', 'returned', 'assigned'] as const).map(f => (
               <button 
                 key={f} 
                 onClick={() => setLoanFilter(f)} 
@@ -106,8 +107,10 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                 {f === 'ALL' 
                   ? `Todos (${loans.length})` 
                   : f === 'active' 
-                    ? `Activos (${loans.filter(l => !l.dateIn).length})` 
-                    : `Devueltos (${loans.filter(l => !!l.dateIn).length})`}
+                    ? `Activos (${loans.filter(l => !l.dateIn && !l.isAssignment).length})` 
+                    : f === 'returned'
+                      ? `Devueltos (${loans.filter(l => !!l.dateIn).length})`
+                      : `Asignaciones (${loans.filter(l => !l.dateIn && !!l.isAssignment).length})`}
               </button>
             ))}
           </div>
@@ -232,9 +235,15 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                         ) : (
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-wider animate-pulse">
-                                En Terreno
-                              </span>
+                              {l.isAssignment ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 border border-purple-500/20 uppercase tracking-wider">
+                                  Asignación Personal
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20 uppercase tracking-wider animate-pulse">
+                                  En Terreno
+                                </span>
+                              )}
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${dc}`}>
                                 {days}d
                               </span>
