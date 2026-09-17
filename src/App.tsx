@@ -867,19 +867,20 @@ function BodegaContent() {
   const handleAddMaintenance = async () => {
     if (!selectedTool) return;
     if (!newMaintenance.isCalibration && !newMaintenance.description) return;
-    const today = new Date().toISOString().split('T')[0];
-    const desc = newMaintenance.description || (newMaintenance.isCalibration ? 'Calibración periódica' : '');
-    const r = { 
+    const calDate = (newMaintenance.isCalibration && newMaintenance.newLastCal) ? newMaintenance.newLastCal : today;
+    const r: MaintenanceRecord = { 
       id: Date.now().toString(), 
-      date: today, 
+      date: calDate, 
       description: desc, 
-      cost: newMaintenance.cost, 
-      technician: newMaintenance.technician 
+      cost: Number(newMaintenance.cost) || 0, 
+      technician: newMaintenance.technician || '',
+      isCalibration: !!newMaintenance.isCalibration,
+      nextCalibrationDate: newMaintenance.newNextCal || undefined
     };
     const h = [r, ...(selectedTool.maintenanceHistory || [])];
     const calUpdate: any = { maintenanceHistory: h, status: 'available' };
     if (newMaintenance.isCalibration) {
-      calUpdate.lastCalibration = newMaintenance.newLastCal || today;
+      calUpdate.lastCalibration = calDate;
       if (newMaintenance.newNextCal) calUpdate.nextCalibration = newMaintenance.newNextCal;
     } else {
       calUpdate.status = 'maintenance';

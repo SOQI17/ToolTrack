@@ -13,6 +13,9 @@ export interface MaintenanceRecord {
   description: string;
   cost: number;
   technician: string;
+  isCalibration?: boolean;
+  nextCalibrationDate?: string;
+  certificateNumber?: string;
 }
 
 export interface ToolComponent {
