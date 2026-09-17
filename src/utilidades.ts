@@ -196,17 +196,18 @@ export const handleImportCSV = (
         return null;
       }
 
+      const abcCat = mapABC(grupo);
       return {
         name,
         serial,
         orimec: orimecId,
         category,
-        abcCategory: mapABC(grupo),
+        abcCategory: abcCat,
         status: mapStatus(estado),
         condition: estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase(),
         quantity: cantidad,
-        ...(lastCal ? { lastCalibration: lastCal } : {}),
-        ...(nextCal ? { nextCalibration: nextCal } : {}),
+        ...(abcCat === 'A' && lastCal ? { lastCalibration: lastCal } : {}),
+        ...(abcCat === 'A' && nextCal ? { nextCalibration: nextCal } : {}),
         ...(observaciones ? { notes: observaciones } : {}),
         files: [],
         maintenanceHistory: [],

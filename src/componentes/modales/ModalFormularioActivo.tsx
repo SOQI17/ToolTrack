@@ -145,7 +145,14 @@ export const ModalFormularioActivo: React.FC<ModalFormularioActivoProps> = ({
                 <select 
                   className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm" 
                   value={newTool.abcCategory || 'B'} 
-                  onChange={e => setNewTool({ ...newTool, abcCategory: e.target.value as ABCCategory })}
+                  onChange={e => {
+                    const cat = e.target.value as ABCCategory;
+                    setNewTool({ 
+                      ...newTool, 
+                      abcCategory: cat,
+                      ...(cat !== 'A' ? { lastCalibration: '', nextCalibration: '' } : {})
+                    });
+                  }}
                 >
                   <option value="A">Clase A (Alta / Calibrable)</option>
                   <option value="B">Clase B (Media)</option>

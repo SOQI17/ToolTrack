@@ -77,15 +77,16 @@ export const TabCalibraciones: React.FC<TabCalibracionesProps> = ({
     setShowDetailsModal(true);
   };
 
-  // Construir historial completo de calibraciones a partir de todos los activos
+  // Construir historial completo de calibraciones únicamente de herramientas Clase A
   const allCalibrationHistory: CalibrationHistoryItem[] = [];
+  const classATools = tools.filter(t => t.abcCategory === 'A');
 
-  tools.forEach(tool => {
+  classATools.forEach(tool => {
     const datesRecorded = new Set<string>();
 
     if (tool.maintenanceHistory && tool.maintenanceHistory.length > 0) {
       tool.maintenanceHistory.forEach(m => {
-        const isCal = m.isCalibration || m.description.toLowerCase().includes('calibrac') || tool.abcCategory === 'A';
+        const isCal = m.isCalibration || !!m.nextCalibrationDate || m.description.toLowerCase().includes('calibrac');
         if (isCal) {
           datesRecorded.add(m.date);
           allCalibrationHistory.push({

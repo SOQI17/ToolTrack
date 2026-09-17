@@ -300,17 +300,19 @@ export const ModalDetalleActivo: React.FC<ModalDetalleActivoProps> = ({
                   </div>
                   
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <div 
-                        className={`w-9 h-5 rounded-full transition-colors relative ${newMaintenance.isCalibration ? 'bg-blue-600' : 'bg-slate-300'}`} 
-                        onClick={() => setNewMaintenance({ ...newMaintenance, isCalibration: !newMaintenance.isCalibration })}
-                      >
-                        <div className={`w-4 h-4 bg-white rounded-full shadow absolute top-0.5 transition-transform ${newMaintenance.isCalibration ? 'translate-x-4' : 'translate-x-0.5'}`}/>
-                      </div>
-                      <span className="text-xs font-bold text-slate-600">Es calibración</span>
-                    </label>
+                    {selectedTool.abcCategory === 'A' && (
+                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <div 
+                          className={`w-9 h-5 rounded-full transition-colors relative ${newMaintenance.isCalibration ? 'bg-blue-600' : 'bg-slate-300'}`} 
+                          onClick={() => setNewMaintenance({ ...newMaintenance, isCalibration: !newMaintenance.isCalibration })}
+                        >
+                          <div className={`w-4 h-4 bg-white rounded-full shadow absolute top-0.5 transition-transform ${newMaintenance.isCalibration ? 'translate-x-4' : 'translate-x-0.5'}`}/>
+                        </div>
+                        <span className="text-xs font-bold text-slate-600">Es calibración</span>
+                      </label>
+                    )}
                     
-                    {newMaintenance.isCalibration && (
+                    {selectedTool.abcCategory === 'A' && newMaintenance.isCalibration && (
                       <div className="flex items-center gap-3 flex-1 animate-in fade-in duration-200">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">Fecha calibración</span>
@@ -336,14 +338,14 @@ export const ModalDetalleActivo: React.FC<ModalDetalleActivoProps> = ({
                     
                     <button 
                       onClick={handleAddMaintenance} 
-                      disabled={!newMaintenance.isCalibration && !newMaintenance.description} 
+                      disabled={!(selectedTool.abcCategory === 'A' && newMaintenance.isCalibration) && !newMaintenance.description} 
                       className={`ml-auto px-6 py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 shadow-md transition-all ${
-                        newMaintenance.isCalibration 
+                        selectedTool.abcCategory === 'A' && newMaintenance.isCalibration 
                           ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 text-white' 
                           : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20 text-white'
                       }`}
                     >
-                      {newMaintenance.isCalibration ? 'Registrar Calibración' : 'Registrar'}
+                      {selectedTool.abcCategory === 'A' && newMaintenance.isCalibration ? 'Registrar Calibración' : 'Registrar Intervención'}
                     </button>
                   </div>
                 </div>

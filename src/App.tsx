@@ -747,8 +747,11 @@ function BodegaContent() {
     try {
       let finalImageUrl = newTool.imageUrl;
       if (selectedToolImage) finalImageUrl = await fileToBase64(selectedToolImage);
+      const isClassA = newTool.abcCategory === 'A';
       const toolData = { 
         ...newTool, 
+        lastCalibration: isClassA ? (newTool.lastCalibration || '') : '',
+        nextCalibration: isClassA ? (newTool.nextCalibration || '') : '',
         imageUrl: finalImageUrl || '', 
         quantity: newTool.quantity || 1, 
         maintenanceHistory: newTool.maintenanceHistory || [] 
@@ -866,20 +869,23 @@ function BodegaContent() {
 
   const handleAddMaintenance = async () => {
     if (!selectedTool) return;
-    if (!newMaintenance.isCalibration && !newMaintenance.description) return;
-    const calDate = (newMaintenance.isCalibration && newMaintenance.newLastCal) ? newMaintenance.newLastCal : today;
+    const isClassA = selectedTool.abcCategory === 'A';
+    const isCal = isClassA && !!newMaintenance.isCalibration;
+    if (!isCal && !newMaintenance.description) return;
+    const desc = newMaintenance.description || (isCal ? 'Calibración periódica' : 'Mantenimiento');
+    const calDate = (isCal && newMaintenance.newLastCal) ? newMaintenance.newLastCal : today;
     const r: MaintenanceRecord = { 
       id: Date.now().toString(), 
       date: calDate, 
       description: desc, 
       cost: Number(newMaintenance.cost) || 0, 
       technician: newMaintenance.technician || '',
-      isCalibration: !!newMaintenance.isCalibration,
-      nextCalibrationDate: newMaintenance.newNextCal || undefined
+      isCalibration: isCal,
+      nextCalibrationDate: isCal ? (newMaintenance.newNextCal || undefined) : undefined
     };
     const h = [r, ...(selectedTool.maintenanceHistory || [])];
     const calUpdate: any = { maintenanceHistory: h, status: 'available' };
-    if (newMaintenance.isCalibration) {
+    if (isCal) {
       calUpdate.lastCalibration = calDate;
       if (newMaintenance.newNextCal) calUpdate.nextCalibration = newMaintenance.newNextCal;
     } else {
@@ -888,7 +894,7 @@ function BodegaContent() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tools', selectedTool.id), calUpdate);
     setSelectedTool({ ...selectedTool, ...calUpdate, maintenanceHistory: h });
     setNewMaintenance({ description: '', cost: 0, technician: '', isCalibration: false, newLastCal: '', newNextCal: '' });
-    addToast(newMaintenance.isCalibration ? 'Calibración registrada — alerta eliminada' : 'Intervención registrada');
+    addToast(isCal ? 'Calibración registrada — alerta eliminada' : 'Intervención registrada');
   };
 
   const toggleToolSelectionForLoan = (tool: ToolItem) => {
