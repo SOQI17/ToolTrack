@@ -1438,8 +1438,13 @@ function BodegaContent() {
 
   const exportInventory = () => {
     exportToCSV(tools.map(t => ({ 
-      Nombre: t.name, Serie: t.serial, Estado: t.status, 
-      Categoria: t.category, Cantidad: t.quantity 
+      'PN ORIMEC': t.orimec || '—',
+      Nombre: t.name, 
+      Serie: t.serial || '—', 
+      Clase: t.abcCategory || '—',
+      Estado: t.status, 
+      Categoria: t.category, 
+      Cantidad: t.quantity 
     })), 'Inventario');
   };
 

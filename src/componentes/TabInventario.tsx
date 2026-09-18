@@ -60,7 +60,8 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
   const filteredTools = tools.filter(t => 
     (filterABC === 'ALL' || t.abcCategory === filterABC) && 
     (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-     t.serial.toLowerCase().includes(searchTerm.toLowerCase()))
+     t.serial.toLowerCase().includes(searchTerm.toLowerCase()) ||
+     (t.orimec ? t.orimec.toLowerCase().includes(searchTerm.toLowerCase()) : false))
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredTools.length / ITEMS_PER_PAGE));
@@ -159,7 +160,7 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
             <Search className="absolute left-4 md:left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Buscar S/N o descripción..." 
+              placeholder="Buscar ORI, S/N o descripción..." 
               className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-600/10 focus:border-blue-500 transition-all" 
               value={searchTerm} 
               onChange={(e) => { setSearchTerm(e.target.value); setInventoryPage(1); }} 
@@ -216,10 +217,17 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
                         {t.imageUrl ? <img src={t.imageUrl} className="w-full h-full object-cover" alt=""/> : <ImageIcon size={14} className="text-slate-300"/>}
                       </div>
                     </td>
-                    <td className={`px-4 py-2 align-middle min-w-[200px] ${canClick ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={() => handleItemClick(t)}>
+                    <td className={`px-4 py-2 align-middle min-w-[220px] ${canClick ? 'cursor-pointer' : 'cursor-not-allowed'}`} onClick={() => handleItemClick(t)}>
                       <p className="font-bold dm-text group-hover:text-blue-500 transition-colors text-xs whitespace-normal leading-tight">{t.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold dm-text3 font-mono dm-surface2 px-1.5 py-0.5 rounded border dm-border whitespace-nowrap">SN: {t.serial}</span>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {t.orimec && (
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50/90 dark:bg-blue-950/50 dark:text-blue-300 font-mono px-1.5 py-0.5 rounded border border-blue-200/80 dark:border-blue-800/60 whitespace-nowrap">
+                            ORI: {t.orimec}
+                          </span>
+                        )}
+                        <span className="text-[10px] font-bold dm-text3 font-mono dm-surface2 px-1.5 py-0.5 rounded border dm-border whitespace-nowrap">
+                          SN: {t.serial || '—'}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-2 text-center align-middle whitespace-nowrap">

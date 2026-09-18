@@ -189,7 +189,9 @@ export const ModalEmisionPrestamo: React.FC<ModalEmisionPrestamoProps> = ({
                     </div>
                     <div className="flex-1 truncate">
                       <p className={`font-bold ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>{t.name}</p>
-                      <p className="text-[10px] text-slate-500 font-mono font-medium mt-0.5">SN: {t.serial}</p>
+                      <p className="text-[10px] text-slate-500 font-mono font-medium mt-0.5">
+                        {t.orimec ? `ORI: ${t.orimec} · ` : ''}SN: {t.serial || '—'}
+                      </p>
                     </div>
                     <BadgeABC category={t.abcCategory}/>
                   </div>
