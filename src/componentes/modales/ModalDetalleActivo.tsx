@@ -481,16 +481,26 @@ export const ModalDetalleActivo: React.FC<ModalDetalleActivoProps> = ({
                       value={newComponent.quantity || 1} 
                       onChange={e => setNewComponent({ ...newComponent, quantity: parseInt(e.target.value) || 1 })} 
                     />
-                    <select 
-                      className="px-3 py-2 border border-slate-300 bg-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
-                      value={newComponent.estado || 'Operativa'} 
-                      onChange={e => setNewComponent({ ...newComponent, estado: e.target.value })}
-                    >
-                      <option>Operativa</option>
-                      <option>En Uso</option>
-                      <option>Mantenimiento</option>
-                      <option>Dano</option>
-                    </select>
+                    <div className="relative">
+                      <input 
+                        list="estado-componente-options"
+                        type="text"
+                        className="w-full px-3 py-2 border border-slate-300 bg-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium" 
+                        placeholder="Estado (ej. Operativa, Daño...)"
+                        value={newComponent.estado || 'Operativa'} 
+                        onChange={e => setNewComponent({ ...newComponent, estado: e.target.value })}
+                      />
+                      <datalist id="estado-componente-options">
+                        <option value="Operativa" />
+                        <option value="En Uso" />
+                        <option value="Mantenimiento" />
+                        <option value="Daño" />
+                        <option value="Dañado" />
+                        <option value="Desgaste" />
+                        <option value="Incompleto" />
+                        <option value="Fuera de Servicio" />
+                      </datalist>
+                    </div>
                     <div className="col-span-2 md:col-span-1 flex justify-end">
                       <button 
                         disabled={!newComponent.name} 
@@ -563,15 +573,30 @@ export const ModalDetalleActivo: React.FC<ModalDetalleActivoProps> = ({
                             </td>
                             <td className="px-4 py-3 text-center font-bold text-slate-700">{comp.quantity}</td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                                comp.estado === 'Operativa' 
-                                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' 
-                                  : comp.estado === 'Dano' || comp.estado === 'Dañado' 
-                                    ? 'bg-red-50 text-red-700 ring-1 ring-red-600/20' 
-                                    : 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20'
-                              }`}>
-                                {comp.estado}
-                              </span>
+                              {isAdmin ? (
+                                <input 
+                                  list="estado-componente-options"
+                                  type="text"
+                                  className="px-2.5 py-1 border border-slate-200 hover:border-slate-400 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none bg-slate-50 focus:bg-white transition-all w-32"
+                                  value={comp.estado || 'Operativa'}
+                                  onChange={async (e) => {
+                                    const newEstado = e.target.value;
+                                    const updated = (selectedTool.components || []).map((c, i) => i === idx ? { ...c, estado: newEstado } : c);
+                                    setSelectedTool({ ...selectedTool, components: updated });
+                                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'tools', selectedTool.id), { components: updated });
+                                  }}
+                                />
+                              ) : (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                                  (comp.estado || '').toLowerCase().includes('operat') 
+                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20' 
+                                    : (comp.estado || '').toLowerCase().includes('dan') || (comp.estado || '').toLowerCase().includes('rot')
+                                      ? 'bg-red-50 text-red-700 ring-1 ring-red-600/20' 
+                                      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-600/20'
+                                }`}>
+                                  {comp.estado}
+                                </span>
+                              )}
                             </td>
                             {isAdmin && (
                               <td className="px-4 py-3">
