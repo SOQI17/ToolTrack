@@ -1,5 +1,119 @@
 import React from 'react';
+import * as XLSX from 'xlsx';
 import type { ToolItem, Loan, Engineer, ToolStatus, ABCCategory, ToolComponent } from './tipos';
+
+export const exportInventoryToExcel = (tools: ToolItem[]) => {
+  if (!tools.length) {
+    alert("No hay activos para exportar.");
+    return;
+  }
+
+  // Ordenar por código ORIMEC o nombre
+  const sorted = [...tools].sort((a, b) => (a.orimec || '').localeCompare(b.orimec || '', undefined, { numeric: true }));
+
+  const data: (string | number)[][] = [
+    ['REGISTRO', '', 'Doc. ID: RE-TE-01', '', 'ORIMEC', '', 'Grupo A', 'Calibración Requerida', 'Herramienta'],
+    ['MAESTRO DE HERRAMIENTAS E INSTRUMENTOS', '', '', '', '', '', 'Grupo B', 'Mantenimiento requerido', 'Instrumento'],
+    ['', '', '', '', '', '', 'Grupo C', 'No requiere Mantenimiento', ''],
+    [
+      'PN ORIMEC',
+      'Nombre',
+      'PN',
+      'Cantidad',
+      'Modalidad',
+      'Familia',
+      'Estado',
+      'Ubicación',
+      'M.Preventivo',
+      'Calibración',
+      'Fecha Calibración',
+      'Próxima Calibración',
+      'Grupo',
+      'Observaciones'
+    ]
+  ];
+
+  sorted.forEach(t => {
+    const isClassA = t.abcCategory === 'A';
+    const isClassB = t.abcCategory === 'B';
+
+    // Determinar Modalidad y Familia
+    const cat = t.category || 'Herramienta';
+    const isInstrument = /instrum|medici/i.test(cat) || /medidor|analizador|multimetro|termometro|manometro/i.test(t.name);
+    const familia = isInstrument ? 'Instrumento' : 'Herramienta';
+
+    let modalidad = 'Todas';
+    if (/MG|MAMO/i.test(t.name) || /MG/i.test(cat)) modalidad = 'MG';
+    else if (/BMD|OSTEODENS/i.test(t.name) || /BMD/i.test(cat)) modalidad = 'BMD';
+    else if (/CT|TOMOGRAF/i.test(t.name) || /CT/i.test(cat)) modalidad = 'CT';
+    else if (/MR|RESONAN/i.test(t.name) || /MR/i.test(cat)) modalidad = 'MR';
+    else if (/PET/i.test(t.name) || /PET/i.test(cat)) modalidad = 'PET/CT';
+    else if (/CARESTREAM/i.test(t.name) || /CARESTREAM/i.test(cat)) modalidad = 'CARESTREAM';
+    else if (/XR|RAYOS/i.test(t.name) || /XR/i.test(cat)) modalidad = 'XR SURGERY';
+
+    // Determinar Estado
+    let estado = 'Operativa';
+    const condNorm = (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (t.status === 'broken' || condNorm.includes('fuera') || condNorm.includes('baja') || condNorm.includes('dan')) {
+      estado = condNorm.includes('baja') ? 'Dado de Baja' : 'Fuera de Servicio';
+    } else if (t.status === 'in-use') {
+      estado = 'En Uso';
+    } else if (t.status === 'maintenance') {
+      estado = 'Mantenimiento';
+    } else if (t.condition && t.condition !== 'Buena' && t.condition !== 'Optimo' && t.condition !== 'Optima') {
+      estado = t.condition;
+    }
+
+    data.push([
+      t.orimec || '',
+      t.name || '',
+      t.serial || '',
+      t.quantity || 1,
+      modalidad,
+      familia,
+      estado,
+      'Ingeniería UIO',
+      (isClassA || isClassB) ? 'Si' : 'No',
+      isClassA ? 'Si' : 'No',
+      isClassA ? (t.lastCalibration || '') : '',
+      isClassA ? (t.nextCalibration || '') : '',
+      t.abcCategory || 'C',
+      t.notes || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Merges para el encabezado
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, // A1:B1 REGISTRO
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }, // A2:B2 MAESTRO DE HERRAMIENTAS...
+    { s: { r: 0, c: 2 }, e: { r: 1, c: 3 } }, // C1:D2 Doc. ID: RE-TE-01
+    { s: { r: 0, c: 4 }, e: { r: 1, c: 5 } }  // E1:F2 ORIMEC
+  ];
+
+  // Anchos de columna óptimos
+  ws['!cols'] = [
+    { wch: 14 }, // PN ORIMEC
+    { wch: 45 }, // Nombre
+    { wch: 20 }, // PN (Serie)
+    { wch: 10 }, // Cantidad
+    { wch: 15 }, // Modalidad
+    { wch: 15 }, // Familia
+    { wch: 16 }, // Estado
+    { wch: 18 }, // Ubicación
+    { wch: 14 }, // M.Preventivo
+    { wch: 14 }, // Calibración
+    { wch: 18 }, // Fecha Calibración
+    { wch: 18 }, // Próxima Calibración
+    { wch: 10 }, // Grupo
+    { wch: 45 }  // Observaciones
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'MAESTRO');
+  XLSX.writeFile(wb, `RE-TE-01_Maestro_Herramientas_ORIMEC_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
 
 export const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {

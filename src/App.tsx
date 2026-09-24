@@ -25,7 +25,8 @@ import type {
 // Utilidades
 import { 
   fileToBase64, exportToCSV, generateInventoryPDF, 
-  generateReportPDF, generateLoanPDF, generateQRUrl, getNextInternalTag 
+  generateReportPDF, generateLoanPDF, generateQRUrl, getNextInternalTag,
+  exportInventoryToExcel
 } from './utilidades';
 
 // Componentes
@@ -1437,15 +1438,7 @@ function BodegaContent() {
   };
 
   const exportInventory = () => {
-    exportToCSV(tools.map(t => ({ 
-      'PN ORIMEC': t.orimec || '—',
-      Nombre: t.name, 
-      Serie: t.serial || '—', 
-      Clase: t.abcCategory || '—',
-      Estado: t.status, 
-      Categoria: t.category, 
-      Cantidad: t.quantity 
-    })), 'Inventario');
+    exportInventoryToExcel(tools);
   };
 
   const exportLoans = () => {
