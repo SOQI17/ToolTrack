@@ -5,8 +5,8 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
-    title: "BodegaControl - ORIMEC",
-    icon: path.join(__dirname, 'public/Logo-Orimec.png'),
+    title: "ToolTrack - ORIMEC C.A.",
+    icon: path.join(__dirname, 'build/icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
