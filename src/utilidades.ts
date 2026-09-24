@@ -1,6 +1,6 @@
 import React from 'react';
 import * as XLSX from 'xlsx';
-import type { ToolItem, Loan, Engineer, ToolStatus, ABCCategory, ToolComponent } from './tipos';
+import type { ToolItem, Loan, Engineer, ToolStatus, ABCCategory, ToolComponent, CalibrationHistoryItem } from './tipos';
 
 export const exportInventoryToExcel = (tools: ToolItem[]) => {
   if (!tools.length) {
@@ -434,4 +434,183 @@ export const getNextInternalTag = (tools: ToolItem[]): string => {
   const nextNum = maxNum + 1;
   const nextNumStr = String(nextNum).padStart(paddingLength, '0');
   return `ORI-${nextNumStr}`;
+};
+
+export const exportCalibrationHistoryToExcel = (history: CalibrationHistoryItem[]) => {
+  if (!history.length) {
+    alert("No hay registros de calibración para exportar.");
+    return;
+  }
+
+  const printDate = new Date().toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
+  const totalCost = history.reduce((acc, h) => acc + (h.cost || 0), 0);
+  const uniqueTools = new Set(history.map(h => h.toolId)).size;
+
+  const data: (string | number)[][] = [
+    ['REGISTRO', '', 'Doc. ID: RE-TE-01', '', 'ORIMEC', '', 'CONTROL METROLÓGICO', 'Herramientas Clase A'],
+    ['HISTORIAL DE CALIBRACIONES Y CERTIFICACIONES', '', '', '', '', '', `Total Calibraciones: ${history.length}`, `Equipos: ${uniqueTools}`],
+    [`Generado: ${printDate}`, '', '', '', '', '', `Inversión Total: $${totalCost.toFixed(2)}`, ''],
+    [
+      'PN ORIMEC',
+      'Herramienta / Equipo',
+      'N.° de Serie',
+      'Clase',
+      'Fecha Calibración',
+      'Próxima Vigencia',
+      'Técnico / Laboratorio',
+      'N.° Certificado',
+      'Costo (USD)',
+      'Detalle / Observaciones'
+    ]
+  ];
+
+  history.forEach(item => {
+    data.push([
+      item.tool.orimec || '—',
+      item.tool.name,
+      item.tool.serial || '—',
+      item.tool.abcCategory || 'A',
+      item.date,
+      item.nextCalibrationDate || item.tool.nextCalibration || '—',
+      item.technician || 'Laboratorio Autorizado',
+      item.certificateNumber || '—',
+      item.cost ? Number(item.cost) : 0,
+      item.description || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, // A1:B1 REGISTRO
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }, // A2:D2 HISTORIAL DE CALIBRACIONES...
+    { s: { r: 0, c: 2 }, e: { r: 0, c: 3 } }, // C1:D1 Doc. ID: RE-TE-01
+    { s: { r: 0, c: 4 }, e: { r: 1, c: 5 } }  // E1:F2 ORIMEC
+  ];
+
+  ws['!cols'] = [
+    { wch: 14 }, // PN ORIMEC
+    { wch: 45 }, // Herramienta / Equipo
+    { wch: 20 }, // N.° de Serie
+    { wch: 10 }, // Clase
+    { wch: 18 }, // Fecha Calibración
+    { wch: 18 }, // Próxima Vigencia
+    { wch: 28 }, // Técnico / Laboratorio
+    { wch: 18 }, // N.° Certificado
+    { wch: 14 }, // Costo
+    { wch: 45 }  // Detalle / Observaciones
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'CALIBRACIONES');
+  XLSX.writeFile(wb, `RE-TE-01_Historial_Calibraciones_ORIMEC_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
+export const generateCalibrationHistoryPDF = (history: CalibrationHistoryItem[]) => {
+  if (!history.length) {
+    alert("No hay registros de calibración para imprimir.");
+    return;
+  }
+
+  const printDate = new Date().toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
+  const totalCost = history.reduce((acc, h) => acc + (h.cost || 0), 0);
+  const uniqueTools = new Set(history.map(h => h.toolId)).size;
+
+  const rows = history.map((h, i) => `
+    <tr style="background:${i % 2 === 0 ? '#f8fafc' : '#fff'}">
+      <td style="padding:8px 10px;font-family:monospace;font-size:10px;font-weight:700;color:#1d4ed8;border-bottom:1px solid #f1f5f9">${h.tool.orimec || '—'}</td>
+      <td style="padding:8px 10px;font-size:11px;font-weight:600;color:#111;border-bottom:1px solid #f1f5f9">${h.tool.name}</td>
+      <td style="padding:8px 10px;font-family:monospace;font-size:10px;color:#64748b;border-bottom:1px solid #f1f5f9">${h.tool.serial || '—'}</td>
+      <td style="padding:8px 10px;font-size:10px;font-weight:700;color:#16a34a;border-bottom:1px solid #f1f5f9">${h.date}</td>
+      <td style="padding:8px 10px;font-size:10px;font-weight:700;color:#dc2626;border-bottom:1px solid #f1f5f9">${h.nextCalibrationDate || h.tool.nextCalibration || '—'}</td>
+      <td style="padding:8px 10px;font-size:10px;color:#475569;border-bottom:1px solid #f1f5f9">${h.technician || 'Laboratorio'}</td>
+      <td style="padding:8px 10px;font-size:10px;font-weight:700;color:#111;text-align:right;border-bottom:1px solid #f1f5f9">${h.cost ? `$${Number(h.cost).toFixed(2)}` : '—'}</td>
+      <td style="padding:8px 10px;font-size:10px;color:#64748b;border-bottom:1px solid #f1f5f9">${h.description || 'Calibración periódica'}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Historial de Calibraciones ORIMEC</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #e8e8e8; padding: 24px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { background: #fff; width: 920px; margin: 0 auto; box-shadow: 0 2px 20px rgba(0,0,0,.1); }
+    .hdr { background: #1a3a6b; color: #fff; padding: 24px 32px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .hl { font-size: 18px; font-weight: 700; }
+    .sub { font-size: 10px; opacity: 0.8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+    .hr { font-size: 10px; opacity: 0.8; text-align: right; }
+    .kgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #e2e8f0; border-bottom: 1px solid #cbd5e1; }
+    .kc { background: #f8fafc; padding: 12px 24px; }
+    .kl { font-size: 8px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 2px; }
+    .kv { font-size: 16px; font-weight: 800; color: #0f172a; }
+    .bd { padding: 24px 32px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f8fafc; border-bottom: 2px solid #1a3a6b; }
+    thead th { padding: 9px 10px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #475569; text-align: left; }
+    .ft { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 8px; color: #94a3b8; }
+    @media print { body { background: #fff; padding: 0; } .page { box-shadow: none; width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="hdr">
+      <div>
+        <div class="hl">ORIMEC C.A. — Historial de Calibraciones</div>
+        <div class="sub">Control Metrológico de Herramientas Clase A · Doc. ID: RE-TE-01</div>
+      </div>
+      <div class="hr">
+        Generado: ${printDate}<br>
+        Total: ${history.length} calibraciones
+      </div>
+    </div>
+    <div class="kgrid">
+      <div class="kc">
+        <div class="kl">Total Calibraciones</div>
+        <div class="kv">${history.length}</div>
+      </div>
+      <div class="kc">
+        <div class="kl">Equipos Calibrados</div>
+        <div class="kv">${uniqueTools}</div>
+      </div>
+      <div class="kc">
+        <div class="kl">Inversión Registrada</div>
+        <div class="kv">$${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+    </div>
+    <div class="bd">
+      <table>
+        <thead>
+          <tr>
+            <th>Tag ORI</th>
+            <th>Herramienta / Equipo</th>
+            <th>N.° Serie</th>
+            <th>Fecha Calib.</th>
+            <th>Próx. Vigencia</th>
+            <th>Laboratorio / Técnico</th>
+            <th style="text-align:right">Costo</th>
+            <th>Observaciones</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="ft">
+        <span>ORIMEC C.A. · Departamento de Calidad y Mantenimiento · Quito, Ecuador</span>
+        <span>ToolTrack v2.0</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.onload = () => { window.focus(); window.print(); };
+  </script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) alert('Permite las ventanas emergentes en el navegador para imprimir el reporte.');
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 };

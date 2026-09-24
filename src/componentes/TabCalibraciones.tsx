@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { 
   ChevronLeft, ChevronRight, AlertOctagon, Calendar, History, 
-  Search, X, Wrench, ShieldCheck, CheckCircle2, DollarSign
+  Search, X, Wrench, ShieldCheck, CheckCircle2, DollarSign,
+  FileSpreadsheet, Printer
 } from 'lucide-react';
-import type { ToolItem } from '../tipos';
+import type { ToolItem, CalibrationHistoryItem } from '../tipos';
+import { exportCalibrationHistoryToExcel, generateCalibrationHistoryPDF } from '../utilidades';
 
 interface TabCalibracionesProps {
   tools: ToolItem[];
@@ -13,18 +15,6 @@ interface TabCalibracionesProps {
   setModalTab: (tab: any) => void;
   setShowDetailsModal: (show: boolean) => void;
   setNewMaintenance: React.Dispatch<React.SetStateAction<any>>;
-}
-
-interface CalibrationHistoryItem {
-  id: string;
-  toolId: string;
-  tool: ToolItem;
-  date: string;
-  description: string;
-  cost: number;
-  technician: string;
-  nextCalibrationDate?: string;
-  certificateNumber?: string;
 }
 
 export const TabCalibraciones: React.FC<TabCalibracionesProps> = ({
@@ -163,31 +153,52 @@ export const TabCalibraciones: React.FC<TabCalibracionesProps> = ({
           <p className="text-xs dm-text3 mt-1">Control metrológico e historial técnico de herramientas Clase A</p>
         </div>
 
-        {/* Sub-Pestañas de Navegación */}
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200">
-          <button
-            onClick={() => setActiveSubTab('schedule')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'schedule'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Calendar size={14}/> Programación y Vencimientos
-            {overdue.length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveSubTab('history')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'history'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <History size={14}/> Historial de Calibraciones ({allCalibrationHistory.length})
-          </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Sub-Pestañas de Navegación */}
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+            <button
+              onClick={() => setActiveSubTab('schedule')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeSubTab === 'schedule'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Calendar size={14}/> Programación y Vencimientos
+              {overdue.length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveSubTab('history')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                activeSubTab === 'history'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <History size={14}/> Historial de Calibraciones ({allCalibrationHistory.length})
+            </button>
+          </div>
+
+          {activeSubTab === 'history' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => exportCalibrationHistoryToExcel(filteredHistory)}
+                className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition-colors text-xs font-bold shadow-sm"
+                title="Descargar historial en Excel (.xlsx)"
+              >
+                <FileSpreadsheet size={14} className="text-emerald-600"/> Excel
+              </button>
+              <button
+                onClick={() => generateCalibrationHistoryPDF(filteredHistory)}
+                className="flex items-center justify-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl hover:bg-slate-50 transition-colors text-xs font-bold shadow-sm"
+                title="Descargar / Imprimir historial en PDF"
+              >
+                <Printer size={14} className="text-blue-600"/> PDF
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

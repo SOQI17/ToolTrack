@@ -18,6 +18,18 @@ export interface MaintenanceRecord {
   certificateNumber?: string;
 }
 
+export interface CalibrationHistoryItem {
+  id: string;
+  toolId: string;
+  tool: ToolItem;
+  date: string;
+  description: string;
+  cost: number;
+  technician: string;
+  nextCalibrationDate?: string;
+  certificateNumber?: string;
+}
+
 export interface ToolComponent {
   id: string;
   orimec: string;
