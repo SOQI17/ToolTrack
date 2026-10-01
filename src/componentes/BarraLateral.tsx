@@ -128,7 +128,7 @@ export const BarraLateral: React.FC<BarraLateralProps> = ({
             <span className="uppercase tracking-wider">{darkMode ? 'Modo oscuro activo' : 'Modo claro activo'}</span>
           </div>
           <div className={`w-9 h-5 rounded-full transition-all flex items-center px-0.5 ${darkMode ? 'bg-blue-600' : 'bg-slate-600/60'}`}>
-            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${darkMode ? 'translate-x-4' : ''}`}/>
+            <div className={`w-4 h-4 rounded-full bg-white keep-white shadow-sm transition-transform duration-200 ${darkMode ? 'translate-x-4' : ''}`}/>
           </div>
         </button>
 
