@@ -195,8 +195,8 @@ export const TabPrestamos: React.FC<TabPrestamosProps> = ({
                 return toolList.map((t, idx) => (
                   <tr 
                     key={`${l.id}-${idx}`} 
-                    className={`hover:bg-slate-50/80 transition-colors ${
-                      idx > 0 ? 'border-t border-dashed border-slate-100' : ''
+                    className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
+                      idx > 0 ? 'border-t border-dashed border-slate-100 dark:border-slate-800/70' : ''
                     }`}
                   >
                     <td className="px-4 py-3 min-w-[180px]">

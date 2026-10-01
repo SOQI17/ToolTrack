@@ -1831,15 +1831,33 @@ function BodegaContent() {
         .dm-border { border-color: var(--dm-border) !important; }
         .dm-divide > * + * { border-color: var(--dm-border) !important; }
 
+        /* Selección de texto de alto contraste */
+        ::selection {
+          background-color: #2563eb !important;
+          color: #ffffff !important;
+        }
+        *::selection {
+          background-color: #2563eb !important;
+          color: #ffffff !important;
+        }
+        [data-theme="dark"] ::selection,
+        [data-theme="dark"] *::selection {
+          background-color: #3b82f6 !important;
+          color: #ffffff !important;
+          -webkit-text-fill-color: #ffffff !important;
+        }
+
         /* Overrides globales automáticos para Dark Mode */
         [data-theme="dark"] .bg-white:not([class*="bg-white/"]):not(.keep-white) {
           background-color: var(--dm-surface) !important;
           color: var(--dm-text) !important;
         }
-        [data-theme="dark"] .bg-slate-50:not([class*="bg-slate-50/"]) {
+        [data-theme="dark"] .bg-slate-50:not([class*="bg-slate-50/"]),
+        [data-theme="dark"] [class*="bg-slate-50/"] {
           background-color: var(--dm-surface2) !important;
         }
-        [data-theme="dark"] .bg-slate-100:not([class*="bg-slate-100/"]) {
+        [data-theme="dark"] .bg-slate-100:not([class*="bg-slate-100/"]),
+        [data-theme="dark"] [class*="bg-slate-100/"] {
           background-color: var(--dm-surface2) !important;
         }
         [data-theme="dark"] .bg-slate-200:not([class*="bg-slate-200/"]) {
@@ -1851,7 +1869,8 @@ function BodegaContent() {
           border-color: var(--dm-border) !important;
         }
         [data-theme="dark"] .border-slate-200\\/60,
-        [data-theme="dark"] .border-slate-200\\/50 {
+        [data-theme="dark"] .border-slate-200\\/50,
+        [data-theme="dark"] [class*="border-slate-100"] {
           border-color: var(--dm-border-subtle) !important;
         }
         [data-theme="dark"] .text-slate-900,
@@ -1866,13 +1885,19 @@ function BodegaContent() {
         [data-theme="dark"] .text-slate-400 {
           color: var(--dm-text3) !important;
         }
-        [data-theme="dark"] .hover\\:bg-slate-50:hover,
-        [data-theme="dark"] .hover\\:bg-slate-100:hover {
-          background-color: var(--dm-surface2) !important;
+
+        /* Hover de filas de tabla y elementos en modo oscuro */
+        [data-theme="dark"] tr:hover,
+        [data-theme="dark"] tbody tr:hover,
+        [data-theme="dark"] [class*="hover:bg-slate"]:hover,
+        [data-theme="dark"] [class*="hover:bg-blue-50"]:hover {
+          background-color: #162032 !important;
         }
-        [data-theme="dark"] .hover\\:bg-slate-200:hover {
-          background-color: var(--dm-surface3) !important;
+        [data-theme="dark"] [class*="hover:bg-slate-200"]:hover,
+        [data-theme="dark"] [class*="hover:bg-slate-300"]:hover {
+          background-color: #1f2e47 !important;
         }
+
         [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
         [data-theme="dark"] select,
         [data-theme="dark"] textarea {
