@@ -102,6 +102,7 @@ export interface Loan {
   engineerId: string;
   dateOut: string;
   dateIn: string | null;
+  dueDate?: string;
   purpose: string;
   project?: string;
   client?: string;

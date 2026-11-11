@@ -61,7 +61,7 @@ export const TabPanelControl: React.FC<TabPanelControlProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-6 space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-2">
         <div>
           <h1 className="text-3xl font-bold tracking-tight dm-text">Centro de Control</h1>
           <p className="text-sm mt-1 font-medium dm-text2">Resumen en tiempo real del estado de la bodega.</p>
@@ -69,16 +69,16 @@ export const TabPanelControl: React.FC<TabPanelControlProps> = ({
             N: nuevo préstamo · B: búsqueda global · Esc: cerrar
           </p>
         </div>
-        <div className="relative shrink-0">
-          <button 
-            onClick={() => { setShowGlobalSearch(s => !s); setGlobalSearch(''); }} 
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-bold shadow-sm transition-all"
+        <div className="relative w-full sm:w-auto shrink-0">
+          <button
+            onClick={() => { setShowGlobalSearch(s => !s); setGlobalSearch(''); }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-bold shadow-sm transition-all"
           >
             <Search size={15}/> Búsqueda global <span className="text-[10px] text-slate-400 font-mono ml-1">B</span>
           </button>
-          
+
           {showGlobalSearch && (
-            <div className="absolute right-0 top-12 bg-white border border-slate-200 rounded-2xl shadow-2xl w-96 z-30 overflow-hidden">
+            <div className="static sm:absolute sm:right-0 sm:top-12 mt-2 sm:mt-0 w-full sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-30 overflow-hidden">
               <div className="p-3 border-b border-slate-100">
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>

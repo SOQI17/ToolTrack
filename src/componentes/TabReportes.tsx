@@ -19,14 +19,14 @@ export const TabReportes: React.FC<TabReportesProps> = ({
 }) => {
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500">
-      <div className="flex-shrink-0 flex justify-between items-center mb-6">
+      <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <div>
           <h2 className="text-3xl font-bold dm-text tracking-tight">Reportes</h2>
           <p className="text-xs dm-text3 mt-1">Análisis operativo de ToolTrack</p>
         </div>
-        <button 
-          onClick={() => generateReportPDF(tools, loans, engineers)} 
-          className="flex items-center gap-2 bg-[#1a3a6b] text-white px-5 py-2.5 rounded-xl hover:bg-blue-800 transition-colors text-sm font-bold shadow-md"
+        <button
+          onClick={() => generateReportPDF(tools, loans, engineers)}
+          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1a3a6b] text-white px-5 py-2.5 rounded-xl hover:bg-blue-800 transition-colors text-sm font-bold shadow-md"
         >
           <Printer size={15}/> Exportar PDF
         </button>

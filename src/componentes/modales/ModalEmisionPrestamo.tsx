@@ -10,6 +10,7 @@ interface ModalEmisionPrestamoProps {
     purpose: string;
     client: string;
     project: string;
+    expectedReturnDays: number;
   };
   setNewLoan: React.Dispatch<React.SetStateAction<any>>;
   tools: ToolItem[];
@@ -245,11 +246,23 @@ export const ModalEmisionPrestamo: React.FC<ModalEmisionPrestamoProps> = ({
               <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                 Proyecto
               </label>
-              <input 
-                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm" 
-                placeholder="Código de proyecto (Opcional)" 
-                value={newLoan.project || ''} 
-                onChange={e => setNewLoan({ ...newLoan, project: e.target.value })} 
+              <input
+                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm"
+                placeholder="Código de proyecto (Opcional)"
+                value={newLoan.project || ''}
+                onChange={e => setNewLoan({ ...newLoan, project: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                Plazo de Devolución (días)
+              </label>
+              <input
+                type="number"
+                min={1}
+                className="w-full px-4 py-3 border border-slate-300 bg-white rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm"
+                value={newLoan.expectedReturnDays}
+                onChange={e => setNewLoan({ ...newLoan, expectedReturnDays: Math.max(1, parseInt(e.target.value) || 1) })}
               />
             </div>
           </div>

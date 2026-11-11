@@ -1,18 +1,28 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { Printer, X } from 'lucide-react';
 import type { ToolItem } from '../../tipos';
 
 interface ModalImpresionQRProps {
   selectedTool: ToolItem;
   setShowQRModal: (show: boolean) => void;
-  generateQRUrl: (tool: ToolItem) => string;
 }
 
 export const ModalImpresionQR: React.FC<ModalImpresionQRProps> = ({
   selectedTool,
-  setShowQRModal,
-  generateQRUrl
+  setShowQRModal
 }) => {
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const texto = `ORIMEC\n${selectedTool.name}\nS/N: ${selectedTool.serial}\nID: ${selectedTool.orimec || 'N/A'}\nEstado: ${selectedTool.status}`;
+    QRCode.toDataURL(texto, { width: 250, margin: 1 })
+      .then(url => { if (!cancelled) setQrDataUrl(url); })
+      .catch(() => { if (!cancelled) setQrDataUrl(''); });
+    return () => { cancelled = true; };
+  }, [selectedTool]);
+
   return (
     <div 
       className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in" 
@@ -20,15 +30,19 @@ export const ModalImpresionQR: React.FC<ModalImpresionQRProps> = ({
     >
       <div 
         id="printable-qr" 
-        className="bg-white p-10 rounded-3xl shadow-2xl text-center border border-slate-200 w-[340px]" 
+        className="bg-white p-6 sm:p-10 rounded-3xl shadow-2xl text-center border border-slate-200 w-full max-w-[340px]"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex flex-col items-center">
           <p className="font-black text-xs tracking-[0.3em] uppercase text-slate-900 mb-6 border-b-2 border-slate-900 pb-2">
             Orimec Assets
           </p>
-          <div className="bg-white p-3 border-4 border-slate-900 rounded-2xl mb-6 shadow-sm">
-            <img src={generateQRUrl(selectedTool)} alt="QR Code" className="w-48 h-48" />
+          <div className="bg-white p-3 border-4 border-slate-900 rounded-2xl mb-6 shadow-sm w-48 h-48 flex items-center justify-center">
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt="Código QR" className="w-full h-full" />
+            ) : (
+              <span className="text-xs text-slate-400">Generando…</span>
+            )}
           </div>
           <h3 className="text-xl font-bold text-slate-900 leading-tight mb-2 uppercase">
             {selectedTool.name}

@@ -41,13 +41,15 @@ service cloud.firestore {
       match /users/{uid} {
         allow read: if estaAutenticado();
 
-        // Un usuario crea su propio perfil al registrarse. El rol de administrador
-        // solo puede auto-asignarse la cuenta de arranque; nadie más lo elige.
+        // El registro público siempre crea cuentas de Ingeniero. El rol de
+        // administrador solo puede auto-asignarse la cuenta de arranque; el de
+        // Bodeguero solo lo otorga un administrador ya existente (nunca el propio
+        // registro).
         allow create: if estaAutenticado()
           && request.auth.uid == uid
           && request.resource.data.uid == uid
           && (
-            request.resource.data.role in ['bodeguero', 'ingeniero'] ||
+            request.resource.data.role == 'ingeniero' ||
             (request.resource.data.role == 'admin' && esCuentaDeArranque())
           );
 
@@ -68,13 +70,19 @@ service cloud.firestore {
       // --- Personal técnico (ingenieros) ---
       match /engineers/{engineerId} {
         allow read: if estaAutenticado();
-        allow write: if esStaff();
+
+        // Un ingeniero recién registrado crea su propia ficha (id == su uid);
+        // el resto de la gestión de personal es tarea de bodega/administración.
+        allow create: if esStaff() || (estaAutenticado() && engineerId == request.auth.uid);
+        allow update, delete: if esStaff();
       }
 
       // --- Inventario de herramientas / activos ---
       match /tools/{toolId} {
         allow read: if estaAutenticado();
-        allow write: if esStaff();
+        allow create, update: if esStaff();
+        // Eliminar un activo es irreversible: solo un administrador puede hacerlo.
+        allow delete: if esAdmin();
       }
 
       // --- Consumibles ---

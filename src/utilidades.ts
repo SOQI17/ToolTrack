@@ -405,10 +405,6 @@ export const generateLoanPDF = (loan: Loan, engineerName: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 };
 
-export const generateQRUrl = (tool: ToolItem) => {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`ORIMEC\n${tool.name}\nS/N: ${tool.serial}\nID: ${tool.orimec || 'N/A'}\nEstado: ${tool.status}`)}&margin=10`;
-};
-
 export const getNextInternalTag = (tools: ToolItem[]): string => {
   let maxNum = 0;
   let paddingLength = 4; // Por defecto, 4 dígitos (ej. ORI-0001)

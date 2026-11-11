@@ -206,12 +206,12 @@ export const TabCalibraciones: React.FC<TabCalibracionesProps> = ({
       {activeSubTab === 'schedule' && (
         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pb-6">
           {/* Navegador de Mes */}
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
             <div>
               <h3 className="font-bold text-sm text-slate-800">Calendario de Vencimientos</h3>
               <p className="text-xs text-slate-400 mt-0.5">Explora las fechas límite de calibración por mes</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-center sm:self-auto">
               <button 
                 onClick={() => setCalendarMonth(m => {
                   const d = new Date(m.year, m.month - 1);

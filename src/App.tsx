@@ -3,9 +3,9 @@ import {
   Wrench, Users, LogOut, Sun, Moon, Search, ChevronRight, 
   Eye, EyeOff, Mail, Lock, User as UserIcon, Menu
 } from 'lucide-react';
-import { 
+import {
   collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, writeBatch,
-  getDoc, setDoc 
+  getDoc, setDoc, runTransaction
 } from 'firebase/firestore';
 import { 
   signInWithEmailAndPassword, 
@@ -25,7 +25,7 @@ import type {
 // Utilidades
 import { 
   fileToBase64, exportToCSV, generateInventoryPDF, 
-  generateReportPDF, generateLoanPDF, generateQRUrl, getNextInternalTag,
+  generateReportPDF, generateLoanPDF, getNextInternalTag,
   exportInventoryToExcel
 } from './utilidades';
 
@@ -144,8 +144,7 @@ function BodegaContent() {
   const [signupName, setSignupName] = useState<string>('');
   const [signupEmail, setSignupEmail] = useState<string>('');
   const [signupPassword, setSignupPassword] = useState<string>('');
-  const [signupRole, setSignupRole] = useState<UserRole>('bodeguero');
-  
+
   // Password Recovery State
   const [isRecovering, setIsRecovering] = useState<boolean>(false);
   const [recoveryEmail, setRecoveryEmail] = useState<string>('');
@@ -273,7 +272,7 @@ function BodegaContent() {
   const [loanDateFrom, setLoanDateFrom] = useState('');
   const [loanDateTo, setLoanDateTo] = useState('');
 
-  const [newLoan, setNewLoan] = useState({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '', destination: '' });
+  const [newLoan, setNewLoan] = useState({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '', destination: '', expectedReturnDays: 7 });
   const [currentLoanTools, setCurrentLoanTools] = useState<ToolItem[]>([]);
   const [loanSearchTerm, setLoanSearchTerm] = useState('');
 
@@ -325,8 +324,10 @@ function BodegaContent() {
               setActiveTab('dashboard');
             }
           } else {
-            // No existe el documento de perfil: se crea uno de respaldo
-            const fallbackRole: UserRole = currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'bodeguero';
+            // No existe el documento de perfil: se crea uno de respaldo como
+            // Ingeniero (mínimo privilegio); coincide con lo único que las
+            // reglas de Firestore permiten auto-asignarse en el registro.
+            const fallbackRole: UserRole = currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'ingeniero';
             const fallbackName = currentUserRes.email?.split('@')[0] || 'Usuario';
             await setDoc(userDocRef, {
               uid: currentUserRes.uid,
@@ -347,8 +348,10 @@ function BodegaContent() {
           setUser(currentUserRes);
         } catch (err) {
           console.error("Error al cargar el perfil del usuario:", err);
-          // Se mantiene la sesión con datos de respaldo para no bloquear la carga
-          const fallbackRole: UserRole = currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'bodeguero';
+          // Se mantiene la sesión con datos de respaldo (mínimo privilegio) para
+          // no bloquear la carga; las reglas de Firestore igual exigen el rol
+          // real guardado en el servidor para cualquier escritura.
+          const fallbackRole: UserRole = currentUserRes.email === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'ingeniero';
           const fallbackName = currentUserRes.email?.split('@')[0] || 'Usuario';
           setCurrentUser(fallbackName);
           setAppUser({ name: fallbackName, role: fallbackRole });
@@ -414,7 +417,11 @@ function BodegaContent() {
       }
     });
     loans.forEach(l => {
-      if (!l.dateIn && !l.isAssignment && l.purpose !== 'Asignación Personal' && Math.ceil((today.getTime() - new Date(l.dateOut).getTime()) / 86400000) > 7) {
+      if (l.dateIn || l.isAssignment || l.purpose === 'Asignación Personal') return;
+      // La fecha límite real del préstamo (dueDate) manda; los préstamos
+      // antiguos sin ese campo usan 7 días desde la salida como respaldo.
+      const limit = l.dueDate ? new Date(l.dueDate) : new Date(new Date(l.dateOut).getTime() + 7 * 86400000);
+      if (today.getTime() > limit.getTime()) {
         const toolNames = l.tools ? l.tools.map(t => t.name).join(', ') : (l.toolId ? getToolName(l.toolId) : 'Varias');
         newAlerts.push({ message: `Préstamo vencido: ${toolNames}`, type: 'loan', loanId: l.id });
       }
@@ -670,11 +677,11 @@ function BodegaContent() {
     setAuthSubmitting(true);
     try {
       const res = await createUserWithEmailAndPassword(auth, signupEmail.trim(), signupPassword);
-      // El rol de administrador nunca se auto-asigna desde el registro público;
-      // solo se obtiene mediante la cuenta de arranque o la promoción de otro admin.
+      // El registro público siempre crea cuentas de Ingeniero; los roles de
+      // Bodeguero y Administrador solo los otorga un administrador ya existente
+      // (ficha de Personal Técnico), salvo la cuenta de arranque configurada.
       const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', res.user.uid);
-      const requestedRole: UserRole = signupRole === 'admin' ? 'bodeguero' : signupRole;
-      const finalRole = signupEmail.trim() === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : requestedRole;
+      const finalRole: UserRole = signupEmail.trim() === BOOTSTRAP_ADMIN_EMAIL ? 'admin' : 'ingeniero';
       await setDoc(userDocRef, {
         uid: res.user.uid,
         name: signupName.trim(),
@@ -683,64 +690,18 @@ function BodegaContent() {
         createdAt: new Date().toISOString()
       });
       if (finalRole === 'ingeniero') {
-        const normalizeName = (name: string) => {
-          return name
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/\s+/g, " ")
-            .trim();
-        };
-
-        const normalizedSignupName = normalizeName(signupName);
-        const matchedEngineer = engineers.find(eng => normalizeName(eng.name) === normalizedSignupName);
-
-        if (matchedEngineer) {
-          // 1. Crear el nuevo documento de ingeniero con la UID como ID
-          const newEngineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
-          await setDoc(newEngineerDocRef, {
-            id: res.user.uid,
-            name: signupName.trim(),
-            department: matchedEngineer.department || 'Ingeniería'
-          });
-
-          // 2. Eliminar el documento de ingeniero antiguo con ID aleatorio
-          const oldEngineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', matchedEngineer.id);
-          await deleteDoc(oldEngineerDocRef);
-
-          // 3. Modificar todas las referencias de préstamos anteriores para que apunten a la UID
-          const batch = writeBatch(db);
-          
-          const matchedLoans = loans.filter(l => l.engineerId === matchedEngineer!.id);
-          matchedLoans.forEach(l => {
-            const loanDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loans', l.id);
-            batch.update(loanDocRef, { engineerId: res.user.uid });
-          });
-
-          // 4. Modificar todas las referencias de consumibles anteriores
-          const matchedConsumables = consumableLogs.filter(cl => cl.engineerId === matchedEngineer!.id);
-          matchedConsumables.forEach(cl => {
-            const clDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'consumable_logs', cl.id);
-            batch.update(clDocRef, { engineerId: res.user.uid });
-          });
-
-          // 5. Modificar todas las referencias de solicitudes anteriores
-          const matchedRequests = loanRequests.filter(r => r.engineerUid === matchedEngineer!.id);
-          matchedRequests.forEach(r => {
-            const reqDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', r.id);
-            batch.update(reqDocRef, { engineerUid: res.user.uid });
-          });
-
-          await batch.commit();
-        } else {
-          // Si no existe coincidencia, creamos el perfil desde cero
-          const engineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
-          await setDoc(engineerDocRef, {
-            id: res.user.uid,
-            name: signupName.trim(),
-            department: 'Ingeniería'
-          });
-        }
+        // El perfil de ingeniero siempre se crea en blanco bajo el UID real de la
+        // cuenta. Si ya existía un perfil creado manualmente con el mismo nombre,
+        // un administrador lo fusiona después desde Personal Técnico (botón
+        // "Fusionar"): hacerlo automáticamente aquí, por coincidencia de nombre
+        // y sin supervisión, permitiría que cualquiera que conozca el nombre de
+        // un técnico real se registre y absorba su historial de préstamos.
+        const engineerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'engineers', res.user.uid);
+        await setDoc(engineerDocRef, {
+          id: res.user.uid,
+          name: signupName.trim(),
+          department: 'Ingeniería'
+        });
       }
       addToast('¡Cuenta creada y sesión iniciada!', 'success');
     } catch (err: any) {
@@ -763,6 +724,21 @@ function BodegaContent() {
   const handleSaveTool = async () => {
     if (!user) return;
     try {
+      // RN01: el alta/edición se detiene si el número de serie o el código
+      // ORIMEC ya pertenecen a otro activo registrado.
+      const serial = (newTool.serial || '').trim().toLowerCase();
+      const orimecTag = (newTool.orimec || '').trim().toLowerCase();
+      const duplicado = tools.find(t => {
+        if (t.id === newTool.id) return false;
+        const sameSerial = serial && (t.serial || '').trim().toLowerCase() === serial;
+        const sameOrimec = orimecTag && (t.orimec || '').trim().toLowerCase() === orimecTag;
+        return sameSerial || sameOrimec;
+      });
+      if (duplicado) {
+        alert(`Ya existe un activo registrado con ese ${duplicado.serial?.trim().toLowerCase() === serial && serial ? 'número de serie' : 'código ORIMEC'}: "${duplicado.name}".`);
+        return;
+      }
+
       let finalImageUrl = newTool.imageUrl;
       if (selectedToolImage) finalImageUrl = await fileToBase64(selectedToolImage);
       const isClassA = newTool.abcCategory === 'A';
@@ -925,24 +901,32 @@ function BodegaContent() {
 
   const handleCreateLoan = async () => {
     if (!user || currentLoanTools.length === 0 || !newLoan.engineerId) return alert("Completa la información requerida.");
-    const loanData = { 
-      ...newLoan, 
-      tools: currentLoanTools.map(t => ({ id: t.id, name: t.name, serial: t.serial })), 
-      dateOut: new Date().toISOString(), 
-      dateIn: null, 
-      client: newLoan.client || 'Interno', 
+    const { expectedReturnDays, ...loanFields } = newLoan;
+    const dateOut = new Date();
+    const dueDate = new Date(dateOut.getTime() + (expectedReturnDays || 7) * 86400000);
+    const loanData = {
+      ...loanFields,
+      tools: currentLoanTools.map(t => ({ id: t.id, name: t.name, serial: t.serial })),
+      dateOut: dateOut.toISOString(),
+      dateIn: null,
+      dueDate: dueDate.toISOString(),
+      client: newLoan.client || 'Interno',
       project: newLoan.project || 'General',
-      destination: newLoan.destination || 'Oficina' 
+      destination: newLoan.destination || 'Oficina'
     };
     try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'), loanData);
+      // Una sola operación por lote: si falla, ni el préstamo se crea ni las
+      // herramientas cambian de estado (evita que el préstamo quede creado
+      // sin que las herramientas pasen a "en uso", o viceversa).
       const batch = writeBatch(db);
+      const loanDocRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'));
+      batch.set(loanDocRef, loanData);
       currentLoanTools.forEach(tool => {
         batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', tool.id), { status: 'in-use' });
       });
       await batch.commit();
       setShowLoanModal(false);
-      setNewLoan({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '', destination: '' });
+      setNewLoan({ engineerId: '', purpose: 'Mantenimiento', client: '', project: '', destination: '', expectedReturnDays: 7 });
       setCurrentLoanTools([]);
       setLoanSearchTerm('');
       setActivityLog(prev => [
@@ -997,34 +981,48 @@ function BodegaContent() {
   const handleApproveRequest = async (req: LoanRequest) => {
     if (!user || !appUser) return;
     try {
-      const loanData = {
-        tools: req.tools,
-        engineerId: req.engineerUid,
-        dateOut: new Date().toISOString(),
-        dateIn: null,
-        purpose: req.purpose,
-        project: req.project || 'General',
-        client: req.client || 'Interno'
-      };
-
       const loanDocRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'loans'));
       const requestDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'loan_requests', req.id);
+      const toolDocRefs = req.tools.map(tool => doc(db, 'artifacts', appId, 'public', 'data', 'tools', tool.id));
 
-      const batch = writeBatch(db);
-      
-      batch.set(loanDocRef, loanData);
+      // Transacción: vuelve a leer el estado real de la solicitud y de cada
+      // herramienta justo antes de escribir. Si dos bodegueros aprueban la
+      // misma solicitud/herramienta a la vez, solo la primera transacción
+      // que llega gana; la segunda falla en vez de dejar un préstamo duplicado
+      // o una herramienta "en uso" dos veces.
+      await runTransaction(db, async (tx) => {
+        const requestSnap = await tx.get(requestDocRef);
+        if (!requestSnap.exists() || requestSnap.data().status !== 'pending') {
+          throw new Error('Esta solicitud ya fue resuelta por otro usuario.');
+        }
 
-      req.tools.forEach(tool => {
-        batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'tools', tool.id), { status: 'in-use' });
+        const toolSnaps = await Promise.all(toolDocRefs.map(ref => tx.get(ref)));
+        const noDisponible = toolSnaps.find(snap => !snap.exists() || snap.data()?.status !== 'available');
+        if (noDisponible) {
+          throw new Error('Una de las herramientas solicitadas ya no está disponible.');
+        }
+
+        const dateOut = new Date();
+        const dueDate = new Date(dateOut.getTime() + (req.durationDays || 1) * 86400000);
+        const loanData = {
+          tools: req.tools,
+          engineerId: req.engineerUid,
+          dateOut: dateOut.toISOString(),
+          dateIn: null,
+          dueDate: dueDate.toISOString(),
+          purpose: req.purpose,
+          project: req.project || 'General',
+          client: req.client || 'Interno'
+        };
+
+        tx.set(loanDocRef, loanData);
+        toolDocRefs.forEach(ref => tx.update(ref, { status: 'in-use' }));
+        tx.update(requestDocRef, {
+          status: 'approved',
+          resolvedBy: appUser.name,
+          resolvedAt: new Date().toISOString()
+        });
       });
-
-      batch.update(requestDocRef, {
-        status: 'approved',
-        resolvedBy: appUser.name,
-        resolvedAt: new Date().toISOString()
-      });
-
-      await batch.commit();
 
       addToast('Solicitud aprobada y préstamo registrado.', 'success');
 
@@ -1724,27 +1722,8 @@ function BodegaContent() {
               </div>
 
               {signupEmail.trim() !== BOOTSTRAP_ADMIN_EMAIL && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5">Rol Solicitado</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([['bodeguero', 'Bodeguero', 'Préstamos'], ['ingeniero', 'Ingeniero', 'Solicitudes']] as const).map(([role, label, desc]) => (
-                      <button 
-                        key={role} 
-                        type="button" 
-                        onClick={() => setSignupRole(role)}
-                        disabled={authSubmitting}
-                        className={`p-3 rounded-xl border text-left transition-all ${
-                          signupRole === role ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/10' : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <p className={`text-xs font-bold ${signupRole === role ? 'text-blue-700' : 'text-slate-700'}`}>{label}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-2">
-                    El acceso de Administrador solo puede otorgarlo otro administrador desde Personal Técnico.
-                  </p>
+                <div className="p-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs font-medium">
+                  Tu cuenta se creará con rol de <strong>Ingeniero</strong>. Un administrador puede ampliarte el acceso a Bodeguero o Administrador desde Personal Técnico.
                 </div>
               )}
 
@@ -2160,10 +2139,9 @@ function BodegaContent() {
           )}
 
           {showQRModal && selectedTool && (
-            <ModalImpresionQR 
+            <ModalImpresionQR
               selectedTool={selectedTool}
               setShowQRModal={setShowQRModal}
-              generateQRUrl={generateQRUrl}
             />
           )}
 

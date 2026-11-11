@@ -112,7 +112,7 @@ export const ModalDevolucion: React.FC<ModalDevolucionProps> = ({
             <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
               Condición al recibir *
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {['Bueno', 'Con daños', 'Requiere revisión'].map(c => (
                 <button 
                   key={c} 
