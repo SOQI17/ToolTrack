@@ -4,6 +4,7 @@ import {
   Search, ShieldCheck, CornerDownLeft
 } from 'lucide-react';
 import type { Engineer, Loan, ConsumableLog, UserRole, ToolItem } from '../../tipos';
+import { sortByOrimec } from '../../utilidades';
 
 interface ModalDetalleIngenieroProps {
   selectedEngineer: Engineer;
@@ -120,7 +121,7 @@ export const ModalDetalleIngeniero: React.FC<ModalDetalleIngenieroProps> = ({
     }
   });
 
-  const availableTools = tools.filter(t => t.status === 'available');
+  const availableTools = sortByOrimec(tools.filter(t => t.status === 'available'));
   const filteredAvailableTools = availableTools.filter(t => {
     const q = assignSearch.toLowerCase().trim();
     if (!q) return true;

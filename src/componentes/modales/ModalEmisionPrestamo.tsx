@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Users, ChevronRight, Search, Check } from 'lucide-react';
 import type { ToolItem, Engineer } from '../../tipos';
 import { BadgeABC } from '../Indicadores';
+import { sortByOrimec } from '../../utilidades';
 
 interface ModalEmisionPrestamoProps {
   setShowLoanModal: (show: boolean) => void;
@@ -168,12 +169,12 @@ export const ModalEmisionPrestamo: React.FC<ModalEmisionPrestamoProps> = ({
               />
             </div>
             <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 divide-y divide-slate-100 custom-scrollbar">
-              {tools.filter(t => 
-                t.status === 'available' && 
+              {sortByOrimec(tools.filter(t =>
+                t.status === 'available' &&
                 (t.condition || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() !== 'fuera de servicio' &&
-                (t.name.toLowerCase().includes(loanSearchTerm.toLowerCase()) || 
+                (t.name.toLowerCase().includes(loanSearchTerm.toLowerCase()) ||
                  t.serial.toLowerCase().includes(loanSearchTerm.toLowerCase()))
-              ).map(t => {
+              )).map(t => {
                 const isSelected = currentLoanTools.some(ct => ct.id === t.id);
                 return (
                   <div 

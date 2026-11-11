@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import type { ToolItem } from '../tipos';
 import { BadgeABC, BadgeEstado } from './Indicadores';
+import { sortByOrimec } from '../utilidades';
 
 import type { UserRole } from '../tipos';
 
@@ -57,12 +58,12 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
   setSelectedRequestTools,
   openSolicitudModal
 }) => {
-  const filteredTools = tools.filter(t => 
-    (filterABC === 'ALL' || t.abcCategory === filterABC) && 
-    (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredTools = sortByOrimec(tools.filter(t =>
+    (filterABC === 'ALL' || t.abcCategory === filterABC) &&
+    (t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
      t.serial.toLowerCase().includes(searchTerm.toLowerCase()) ||
      (t.orimec ? t.orimec.toLowerCase().includes(searchTerm.toLowerCase()) : false))
-  );
+  ));
 
   const totalPages = Math.max(1, Math.ceil(filteredTools.length / ITEMS_PER_PAGE));
   const paginatedTools = filteredTools.slice(
