@@ -381,6 +381,79 @@ export const generateInventoryPDF = (tools: ToolItem[]) => {
   setTimeout(()=>URL.revokeObjectURL(url),10000);
 };
 
+export const generateReportExcel = (tools: ToolItem[], loans: Loan[], engineers: Engineer[], alerts: any[] = []) => {
+  if (!tools.length && !loans.length && !engineers.length) {
+    alert("No hay datos para exportar.");
+    return;
+  }
+
+  const fecha = new Date().toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
+  const closedLoans = loans.filter(l => l.dateIn);
+  const tasaDevolucion = loans.length > 0 ? Math.round(closedLoans.length / loans.length * 100) : 0;
+  const avgDays = closedLoans.length > 0
+    ? closedLoans.reduce((s, l) => s + (new Date(l.dateIn!).getTime() - new Date(l.dateOut).getTime()) / 86400000, 0) / closedLoans.length
+    : 0;
+
+  // --- Hoja 1: Resumen ---
+  const resumenData: (string | number)[][] = [
+    ['REPORTES — TOOLTRACK ORIMEC'],
+    [`Generado: ${fecha}`],
+    [],
+    ['Indicador', 'Valor'],
+    ['Total activos en inventario', tools.length],
+    ['Préstamos activos (fuera de bodega)', loans.filter(l => !l.dateIn).length],
+    ['Tasa de devolución (préstamos cerrados)', loans.length > 0 ? `${tasaDevolucion}%` : '—'],
+    ['Alertas activas', alerts.length],
+    ['Tiempo promedio fuera de bodega (días)', closedLoans.length > 0 ? Number(avgDays.toFixed(1)) : '—'],
+    [],
+    ['Estado del inventario', 'Cantidad', 'Porcentaje'],
+    ['Disponibles', tools.filter(t => t.status === 'available').length, tools.length > 0 ? `${Math.round(tools.filter(t => t.status === 'available').length / tools.length * 100)}%` : '0%'],
+    ['En uso', tools.filter(t => t.status === 'in-use').length, tools.length > 0 ? `${Math.round(tools.filter(t => t.status === 'in-use').length / tools.length * 100)}%` : '0%'],
+    ['Mantenimiento', tools.filter(t => t.status === 'maintenance').length, tools.length > 0 ? `${Math.round(tools.filter(t => t.status === 'maintenance').length / tools.length * 100)}%` : '0%'],
+    ['Dañados', tools.filter(t => t.status === 'broken').length, tools.length > 0 ? `${Math.round(tools.filter(t => t.status === 'broken').length / tools.length * 100)}%` : '0%']
+  ];
+  const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+  wsResumen['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+  wsResumen['!cols'] = [{ wch: 36 }, { wch: 14 }, { wch: 12 }];
+
+  // --- Hoja 2: Préstamos por ingeniero ---
+  const prestamosData: (string | number)[][] = [
+    ['Ingeniero', 'Préstamos totales', 'Préstamos activos']
+  ];
+  [...engineers]
+    .sort((a, b) => loans.filter(l => l.engineerId === b.id).length - loans.filter(l => l.engineerId === a.id).length)
+    .forEach(e => {
+      prestamosData.push([
+        e.name,
+        loans.filter(l => l.engineerId === e.id).length,
+        loans.filter(l => l.engineerId === e.id && !l.dateIn).length
+      ]);
+    });
+  const wsPrestamos = XLSX.utils.aoa_to_sheet(prestamosData);
+  wsPrestamos['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }];
+
+  // --- Hoja 3: Herramientas más prestadas ---
+  const freq: Record<string, { name: string; count: number }> = {};
+  loans.forEach(l => {
+    l.tools?.forEach(t => {
+      if (!freq[t.id]) freq[t.id] = { name: t.name, count: 0 };
+      freq[t.id].count++;
+    });
+  });
+  const herramientasData: (string | number)[][] = [['Herramienta', 'Veces prestada']];
+  Object.values(freq)
+    .sort((a, b) => b.count - a.count)
+    .forEach(item => herramientasData.push([item.name, item.count]));
+  const wsHerramientas = XLSX.utils.aoa_to_sheet(herramientasData);
+  wsHerramientas['!cols'] = [{ wch: 40 }, { wch: 16 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+  XLSX.utils.book_append_sheet(wb, wsPrestamos, 'Prestamos por ingeniero');
+  XLSX.utils.book_append_sheet(wb, wsHerramientas, 'Herramientas mas prestadas');
+  XLSX.writeFile(wb, `Reporte_ToolTrack_ORIMEC_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
 export const generateReportPDF = (tools: ToolItem[], loans: Loan[], engineers: Engineer[]) => {
   const printDate = new Date().toLocaleDateString('es-EC',{day:'2-digit',month:'long',year:'numeric'});
   const closedLoans = loans.filter(l => l.dateIn);

@@ -1,6 +1,7 @@
 import React from 'react';
-import { Printer } from 'lucide-react';
+import { Printer, FileSpreadsheet } from 'lucide-react';
 import type { ToolItem, Loan, Engineer } from '../tipos';
+import { generateReportExcel } from '../utilidades';
 
 interface TabReportesProps {
   tools: ToolItem[];
@@ -24,12 +25,20 @@ export const TabReportes: React.FC<TabReportesProps> = ({
           <h2 className="text-3xl font-bold dm-text tracking-tight">Reportes</h2>
           <p className="text-xs dm-text3 mt-1">Análisis operativo de ToolTrack</p>
         </div>
-        <button
-          onClick={() => generateReportPDF(tools, loans, engineers)}
-          className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#1a3a6b] text-white px-5 py-2.5 rounded-xl hover:bg-blue-800 transition-colors text-sm font-bold shadow-md"
-        >
-          <Printer size={15}/> Exportar PDF
-        </button>
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => generateReportExcel(tools, loans, engineers, alerts)}
+            className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
+          >
+            <FileSpreadsheet size={15}/> Exportar Excel
+          </button>
+          <button
+            onClick={() => generateReportPDF(tools, loans, engineers)}
+            className="flex items-center justify-center gap-2 bg-[#1a3a6b] text-white px-5 py-2.5 rounded-xl hover:bg-blue-800 transition-colors text-sm font-bold shadow-md"
+          >
+            <Printer size={15}/> Exportar PDF
+          </button>
+        </div>
       </div>
       
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-6 space-y-6">
