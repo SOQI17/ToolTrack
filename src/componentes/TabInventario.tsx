@@ -91,29 +91,29 @@ export const TabInventario: React.FC<TabInventarioProps> = ({
           <div>
             <h2 className="text-3xl font-bold dm-text tracking-tight">Inventario Global</h2>
           </div>
-          <div className="flex gap-3 w-full md:w-auto">
+          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
             {userRole !== 'ingeniero' && (
               <>
-                <button 
-                  onClick={() => setShowImportModal(true)} 
+                <button
+                  onClick={() => setShowImportModal(true)}
                   className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
                 >
                   <Import size={14}/> Importar
                 </button>
-                <button 
-                  onClick={exportInventory} 
+                <button
+                  onClick={exportInventory}
                   className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
                 >
                   <FileSpreadsheet size={14}/> Excel
                 </button>
-                <button 
-                  onClick={() => generateInventoryPDF(tools)} 
+                <button
+                  onClick={() => generateInventoryPDF(tools)}
                   className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm"
                 >
                   <Printer size={14}/> PDF
                 </button>
-                <button 
-                  onClick={openCreateToolModal} 
+                <button
+                  onClick={openCreateToolModal}
                   className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold shadow-md shadow-blue-600/20"
                 >
                   <Plus size={14}/> Alta de Activo
